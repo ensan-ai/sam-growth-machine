@@ -3,12 +3,13 @@ import { Activity as ActivityIcon, Bot, BrainCircuit, CirclePause, CirclePlay, C
 import { MissionHome, EmployeeTeam, eventLabel } from "./components/MissionHome";
 import { ApprovalReview } from "./components/ApprovalReview";
 import { Feed } from "./components/Feed";
+import { TaskCommandCenter } from "./components/TaskCommandCenter";
 import { newestFirst } from "./chrono";
 import { runtime } from "./services/runtime";
 import type { Activity, Approval, Dashboard, Employee, Settings, WorkDetail, WorkItem } from "./types";
 
-type View="HOME"|"TEAM"|"WORK"|"APPROVALS"|"ACTIVITY"|"SETTINGS";
-const nav:[View,typeof Home][]=[["HOME",Home],["TEAM",Users],["WORK",Workflow],["APPROVALS",ShieldCheck],["ACTIVITY",ActivityIcon],["SETTINGS",SettingsIcon]];
+type View="HOME"|"TEAM"|"TASKS"|"WORK"|"APPROVALS"|"ACTIVITY"|"SETTINGS";
+const nav:[View,typeof Home][]=[["HOME",Home],["TEAM",Users],["TASKS",ListChecks],["WORK",Workflow],["APPROVALS",ShieldCheck],["ACTIVITY",ActivityIcon],["SETTINGS",SettingsIcon]];
 const fmt=(date?:string)=>date?new Intl.DateTimeFormat(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(date)):"—";
 const short=(id?:string)=>id?id.split("-").slice(-1)[0].slice(0,8):"—";
 
@@ -28,10 +29,11 @@ export default function App(){
       <div className="sidebar-foot"><span className={`status-light ${dashboard?.companyState?.toLowerCase()}`}/><div><small>COMPANY</small><strong>{dashboard?.companyState||"CONNECTING"}</strong></div></div>
     </aside>
     <main>
-      <header><div><p className="eyebrow">SAM GROWTH MACHINE</p><h1>{view==="HOME"?"Mission control":view[0]+view.slice(1).toLowerCase()}</h1></div><div className="header-actions"><span className="provider-pill"><i className={dashboard?.providerStatus.ollamaModelAvailable?"tiny-light":"tiny-light blocked"}/>Ollama <span>{dashboard?.providerStatus.ollamaModelAvailable?dashboard.providerStatus.ollamaModel:"Unavailable"}</span></span><button className="icon-button" onClick={refresh} aria-label="Refresh"><RefreshCw size={15} className={busy?"spin":""}/></button><div className="company-controls"><ControlButton icon={CirclePlay} label="Run" onClick={()=>act(()=>runtime.control("RUN"))}/><ControlButton icon={CirclePause} label="Pause" onClick={()=>act(()=>runtime.control("PAUSE"))}/><ControlButton icon={Square} label="Stop" onClick={()=>act(()=>runtime.control("STOP"))}/></div><button className="primary" onClick={()=>setNewWork(true)}>New work item <span>＋</span></button></div></header>
+      <header><div><p className="eyebrow">SAM GROWTH MACHINE</p><h1>{view==="HOME"?"Mission control":view==="TASKS"?"Task command center":view[0]+view.slice(1).toLowerCase()}</h1></div><div className="header-actions"><span className="provider-pill"><i className={dashboard?.providerStatus.ollamaModelAvailable?"tiny-light":"tiny-light blocked"}/>Ollama <span>{dashboard?.providerStatus.ollamaModelAvailable?dashboard.providerStatus.ollamaModel:"Unavailable"}</span></span><button className="icon-button" onClick={refresh} aria-label="Refresh"><RefreshCw size={15} className={busy?"spin":""}/></button><div className="company-controls"><ControlButton icon={CirclePlay} label="Run" onClick={()=>act(()=>runtime.control("RUN"))}/><ControlButton icon={CirclePause} label="Pause" onClick={()=>act(()=>runtime.control("PAUSE"))}/><ControlButton icon={Square} label="Stop" onClick={()=>act(()=>runtime.control("STOP"))}/></div><button className="primary" onClick={()=>setNewWork(true)}>New work item <span>＋</span></button></div></header>
       {error&&<div className="error-banner"><span>{error}</span><button onClick={()=>setError(undefined)}><X size={16}/></button></div>}
       {view==="HOME"&&dashboard&&<MissionHome dashboard={dashboard} team={team} activity={activity} handoffs={latestHandoffs} selectEmployee={()=>setView("TEAM")} selectWork={selectWork} openActivity={()=>setView("ACTIVITY")} openApprovals={()=>setView("APPROVALS")}/>} 
       {view==="TEAM"&&<EmployeeTeam team={team} activity={activity}/>} 
+      {view==="TASKS"&&<TaskCommandCenter/>}
       {view==="WORK"&&<WorkView work={dashboard?.workItems||[]} detail={detail} selectWork={selectWork} run={()=>detail&&act(()=>runtime.runWorkItem(detail.workItem.workItemId))}/>} 
       {view==="APPROVALS"&&<ApprovalReview work={dashboard?.workItems||[]} approvals={approvals} load={runtime.workItem} decide={(id,action,feedback)=>act(()=>runtime.decideApproval(id,action,feedback))}/>} 
       {view==="ACTIVITY"&&<ActivityView activity={activity}/>} 
