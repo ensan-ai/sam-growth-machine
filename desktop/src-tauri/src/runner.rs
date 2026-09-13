@@ -3,9 +3,8 @@ use serde_json::{json, Value};
 use crate::{
     db::Database,
     definitions::DefinitionStore,
-    providers::{AiProvider, OllamaProvider, OpenAiProvider, ProviderRequest},
+    providers::{AiProvider, OllamaProvider, OpenAiProvider, ProviderRequest, BRAIN_MAX_OUTPUT_TOKENS},
     router::{route, ProviderChoice},
-    schema_fixture::generate_for_type_with_resources,
 };
 
 /// Brain-only model runner. Deterministic roles never enter this path.
@@ -27,14 +26,13 @@ impl AgentRunner {
         brief: &Value,
         revision: Option<&Value>,
     ) -> Result<Value, String> {
-        let definition = self.definitions.get("brain")?.clone();
         let settings = self.db.settings()?;
+        let _ = self.definitions.get("brain")?;
         let openai = OpenAiProvider::from_env(&settings);
         let selected = route("public_writing", &settings, openai.is_some(), false);
         if matches!(selected.primary, ProviderChoice::Mock) {
             return Err("MOCK_PROVIDER cannot be used as a success path in the kernel slice".into());
         }
-        let resources = self.definitions.schema_resources();
         let (provider_name, model) = match selected.primary {
             ProviderChoice::Ollama => ("OLLAMA_PROVIDER".to_string(), settings.ollama_model.clone()),
             ProviderChoice::OpenAi => ("OPENAI_PROVIDER".to_string(), settings.openai_model.clone()),
@@ -62,25 +60,25 @@ impl AgentRunner {
             Some(work_item_id),
             "model.started",
             "brain",
-            json!({"capability": "write_public_copy", "provider": provider_name, "expected_type": "CONTENT_DRAFT"}),
+            json!({
+                "capability": "write_public_copy",
+                "provider": provider_name,
+                "expected_type": "CONTENT_DRAFT",
+                "max_output_tokens": BRAIN_MAX_OUTPUT_TOKENS,
+                "structured_output": true
+            }),
         )?;
 
-        let output_template = generate_for_type_with_resources(&definition.output_schema, "CONTENT_DRAFT", &resources);
-        let context = json!({
-            "content_brief": brief,
-            "revision": revision,
-            "intended_platforms": ["LINKEDIN"],
-            "instruction": "Write a LinkedIn post that preserves the brief core_idea. Return JSON only. Do not invent platform metrics."
-        });
         let request = ProviderRequest {
             agent: "brain".into(),
             task_type: "public_writing".into(),
             expected_type: "CONTENT_DRAFT".into(),
-            system_prompt: format!("{}\n\nAUTHORITATIVE CONTRACT:\n{}", definition.prompt, definition.contract),
-            context,
-            output_schema: definition.output_schema.clone(),
-            output_template,
-            schema_resources: resources,
+            system_prompt: brain_system_prompt(),
+            context: brain_context(brief, revision),
+            output_schema: brain_output_schema(),
+            output_template: Value::Null,
+            schema_resources: Default::default(),
+            max_output_tokens: BRAIN_MAX_OUTPUT_TOKENS,
         };
 
         let mut escalated = false;
@@ -107,7 +105,7 @@ impl AgentRunner {
                         Some(work_item_id),
                         "model.completed",
                         "brain",
-                        json!({"artifact_type": "CONTENT_DRAFT", "escalated": escalated}),
+                        json!({"artifact_type": "CONTENT_DRAFT", "escalated": escalated, "token_usage": result.token_usage}),
                     )?;
                     Ok(output)
                 }
@@ -126,9 +124,51 @@ impl AgentRunner {
     fn fail_run(&self, run_id: &str, work_item_id: &str, error: &str) -> Result<(), String> {
         self.db.finish_run(run_id, false, false, None, None, Some(error))?;
         self.db.set_employee_status("brain", "BLOCKED")?;
-        self.db.event(Some(work_item_id), "model.failed", "brain", json!({"error": error}))?;
+        self.db.event(Some(work_item_id), "model.failed", "brain", json!({"error": error, "fixture_recovery": false}))?;
         Ok(())
     }
+}
+
+pub fn brain_system_prompt() -> String {
+    "You are Brain, writer for SAM SHERIF | PRACTICAL AI.\n\
+     Write a LinkedIn post. Preserve the brief core_idea. Do not invent metrics, facts, tests, or visuals.\n\
+     Do not publish. Sam is the only approver.\n\
+     Return one JSON object with keys: artifact_type, created_by, hook, body, cta, core_idea, intended_platforms, format.\n\
+     artifact_type=CONTENT_DRAFT, created_by=brain, format=LINKEDIN_POST, intended_platforms=[\"LINKEDIN\"].\n\
+     body is the full post, under 1900 characters. hook is one sentence. cta is one concrete next step."
+        .into()
+}
+
+pub fn brain_output_schema() -> Value {
+    json!({
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifact_type", "created_by", "hook", "body", "cta", "core_idea", "intended_platforms", "format"],
+        "properties": {
+            "artifact_type": { "type": "string" },
+            "created_by": { "type": "string" },
+            "hook": { "type": "string" },
+            "body": { "type": "string" },
+            "cta": { "type": "string" },
+            "core_idea": { "type": "string" },
+            "intended_platforms": { "type": "array", "items": { "type": "string" } },
+            "format": { "type": "string" }
+        }
+    })
+}
+
+fn brain_context(brief: &Value, revision: Option<&Value>) -> Value {
+    json!({
+        "brief_id": brief.get("brief_id"),
+        "core_idea": brief.get("core_idea"),
+        "audience_problem": brief.get("audience_problem"),
+        "core_takeaway": brief.get("core_takeaway"),
+        "cta_objective": brief.get("cta_objective"),
+        "hook_direction": brief.get("hook_direction"),
+        "limitation_or_caveat": brief.get("limitation_or_caveat"),
+        "intended_platforms": ["LINKEDIN"],
+        "revision": revision.and_then(|v| v.get("feedback")).cloned()
+    })
 }
 
 fn validate_draft(output: &Value) -> Result<Value, String> {
@@ -145,6 +185,7 @@ fn validate_draft(output: &Value) -> Result<Value, String> {
         obj.entry("artifact_type").or_insert(json!("CONTENT_DRAFT"));
         obj.entry("created_by").or_insert(json!("brain"));
         obj.entry("intended_platforms").or_insert(json!(["LINKEDIN"]));
+        obj.entry("format").or_insert(json!("LINKEDIN_POST"));
     }
     Ok(output)
 }
@@ -158,5 +199,15 @@ mod tests {
         assert!(validate_draft(&json!("not-an-object")).is_err());
         assert!(validate_draft(&json!({"artifact_type": "CONTENT_DRAFT"})).is_err());
         assert!(validate_draft(&json!({"body": "A preserved research signal about approval gates"})).is_ok());
+    }
+
+    #[test]
+    fn compact_schema_is_small_and_has_no_defs() {
+        let schema = brain_output_schema();
+        let encoded = schema.to_string();
+        assert!(encoded.len() < 1200, "compact schema too large: {}", encoded.len());
+        assert!(schema.get("$defs").is_none());
+        assert!(schema.get("oneOf").is_none());
+        assert_eq!(schema["required"].as_array().unwrap().len(), 8);
     }
 }

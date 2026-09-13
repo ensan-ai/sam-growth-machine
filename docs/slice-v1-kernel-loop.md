@@ -54,6 +54,8 @@ stateDiagram-v2
 ```
 
 `BLOCKED` always stores `resume_state`. Resume restores that state, not `NEW`.
+`resume_state` must be non-null and must not be `NEW` or `BLOCKED`.
+If Continue hits a BLOCKED row with a missing resume_state, the runtime repairs it from the failure reason and must not write BLOCKED→BLOCKED.
 
 Examples:
 
@@ -103,6 +105,16 @@ Default `data_quality=UNAVAILABLE`. Lara → `NEED_MORE_DATA`, no causal claims,
 
 Tests may set COMPLETE only with `mocked: true` and provenance `LOCAL_ADAPTER_SYNTHETIC`.
 
+## Live Brain generation
+
+Brain is the only model hop. The live Ollama path must:
+
+- send a compact CONTENT_DRAFT JSON schema via `format` (structured output), not the full Brain contract dump
+- use `num_predict=2048` (`BRAIN_MAX_OUTPUT_TOKENS`), not 768
+- record `done_reason`, `eval_count`, `prompt_eval_count`, and `response_len` on failure
+- treat truncated/malformed JSON as BLOCKED (`resume_state=STRATEGIZED`)
+- never use schema-fixture recovery or `MOCK_PROVIDER` as success
+
 ## Out of slice
 
 Neural Core, OAuth, real social APIs, extra employees, unrelated refactors.
@@ -128,4 +140,7 @@ These tests must prove a real loop, not fixture-complete success:
 - `pause_and_restart_preserve_state`
 - `schema_fixture_not_used_as_success`
 - `publish_adapter_failure_resumes_ready_to_publish`
+- `live_style_provider_json_error_resumes_strategized`
+- `missing_resume_state_is_repaired_without_blocked_to_blocked`
+- `truncated_json_is_not_recovered`
 
