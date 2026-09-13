@@ -18,9 +18,9 @@ export function TaskPreparationPanel({task,onChanged}:{task:CommandTask;onChange
     {error&&<div className="error-banner">{error}</div>}
     <dl><div><dt>Prepare state</dt><dd>{prep?.state?.replaceAll("_"," ") || (task.preparedAt?"PREPARED":"NOT STARTED")}</dd></div></dl>
 
-    {prep?.explorerOutput&&<details className="task-prompt prep-report"><summary>Explorer report</summary><pre>{JSON.stringify(prep.explorerOutput,null,2)}</pre></details>}
-    {prep?.researcherOutput&&<details className="task-prompt prep-report"><summary>Researcher report</summary><pre>{JSON.stringify(prep.researcherOutput,null,2)}</pre></details>}
-    {prep?.orchestratorOutput&&<details className="task-prompt prep-report"><summary>Orchestrator plan</summary><pre>{JSON.stringify(prep.orchestratorOutput,null,2)}</pre></details>}
+    {prep?.explorerOutput!=null&&<details className="task-prompt prep-report"><summary>Explorer report</summary><pre>{JSON.stringify(prep.explorerOutput,null,2)}</pre></details>}
+    {prep?.researcherOutput!=null&&<details className="task-prompt prep-report"><summary>Researcher report</summary><pre>{JSON.stringify(prep.researcherOutput,null,2)}</pre></details>}
+    {prep?.orchestratorOutput!=null&&<details className="task-prompt prep-report"><summary>Orchestrator plan</summary><pre>{JSON.stringify(prep.orchestratorOutput,null,2)}</pre></details>}
     {task.promptMarkdown&&<details className="task-prompt" open><summary>Prepared execution prompt</summary><pre>{task.promptMarkdown}</pre></details>}
 
     {prep?.state==="NEEDS_OPERATOR_INPUT"&&<div className="operator-input-card">
