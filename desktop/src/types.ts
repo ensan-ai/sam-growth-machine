@@ -1,12 +1,13 @@
 export type Employee = { employeeId:string; name:string; title:string; reportsTo:string; version:string; definitionStatus:string; runtimeStatus:string };
 export type ProviderStatus = { ollamaAvailable:boolean; ollamaModelAvailable:boolean; ollamaEndpoint:string; ollamaModel:string; openaiConfigured:boolean; openaiModel:string; message:string };
 export type Settings = { ollamaEndpoint:string; ollamaModel:string; openaiModel:string; allowOpenaiEscalation:boolean; companyControl:string };
-export type WorkItem = { workItemId:string; title:string; state:string; currentOwner:string; createdAt:string; updatedAt:string; blockedReason?:string };
+export type WorkItem = { workItemId:string; title:string; state:string; currentOwner:string; createdAt:string; updatedAt:string; blockedReason?:string; resumeState?:string };
 export type Artifact = { artifactId:string; artifactType:string; workItemId:string; version:number; producer:string; createdAt:string; supersedes?:string; payload:unknown };
 export type Handoff = { handoffId:string; workItemId:string; sender:string; receiver:string; artifactId:string; status:string; createdAt:string; acknowledgedAt?:string };
 export type Approval = { approvalId:string; workItemId:string; approver:string; contentArtifactId:string; contentVersion:number; creativeArtifactId:string; creativeVersion:number; packageArtifactId:string; packageVersion:number; platformScope:string[]; status:string; feedback?:string; createdAt:string; supersededAt?:string };
 export type AgentRun = { runId:string; workItemId:string; agent:string; taskType:string; provider:string; model:string; startedAt:string; finishedAt?:string; success:boolean; escalationOccurred:boolean; tokenUsage?:number; estimatedApiCost?:number; error?:string };
+export type Execution = { executionId:string; workItemId?:string; role:string; capability:string; kind:string; provider?:string; model?:string; startedAt:string; finishedAt?:string; success:boolean; error?:string };
 export type SystemEvent = { eventId:string; workItemId?:string; eventType:string; actor:string; detail:unknown; createdAt:string };
-export type WorkDetail = { workItem:WorkItem; artifacts:Artifact[]; handoffs:Handoff[]; approvals:Approval[]; runs:AgentRun[]; events:SystemEvent[] };
+export type WorkDetail = { workItem:WorkItem; artifacts:Artifact[]; handoffs:Handoff[]; approvals:Approval[]; runs:AgentRun[]; events:SystemEvent[]; executions?:Execution[] };
 export type Dashboard = { companyState:string; providerStatus:ProviderStatus; activeAgents:string[]; waitingApprovals:number; blockedWork:number; workItems:WorkItem[] };
-export type Activity = { runs:AgentRun[]; events:SystemEvent[] };
+export type Activity = { runs:AgentRun[]; events:SystemEvent[]; executions?:Execution[] };
