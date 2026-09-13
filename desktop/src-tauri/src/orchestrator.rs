@@ -448,24 +448,65 @@ impl RuntimeService {
         if is_policy_block(&reason) {
             return Ok(false);
         }
-        let resume = match item.resume_state.as_deref() {
-            Some(state) if Database::is_valid_resume_state(state) => state.to_string(),
-            _ => match infer_resume(&reason) {
-                Some(inferred) => {
-                    let stored = self.db.enter_blocked(id, &item.current_owner, &reason, inferred)?;
+        match self.recover_blocked(id, &item)? {
+            BlockedRecovery::Resume { state, source } => {
+                if item.resume_state.as_deref() != Some(state.as_str()) {
+                    let stored = self.db.enter_blocked(id, &item.current_owner, &reason, &state)?;
                     self.db.event(Some(id), "workflow.resume_state.repaired", "system", json!({
                         "inferred": stored,
+                        "source": source,
                         "reason": reason
                     }))?;
-                    stored
                 }
-                None => return Ok(false),
-            },
-        };
-        let owner = owner_for(&resume);
-        self.db.event(Some(id), "workflow.resumed", "system", json!({"resume_state": resume, "reason": reason}))?;
-        self.db.update_work_item(id, &resume, owner, None)?;
-        Ok(true)
+                let owner = owner_for(&state);
+                self.db.event(Some(id), "workflow.resumed", "system", json!({
+                    "resume_state": state,
+                    "source": source,
+                    "reason": reason
+                }))?;
+                self.db.update_work_item(id, &state, owner, None)?;
+                Ok(true)
+            }
+            BlockedRecovery::Stay { explanation } => {
+                if reason != explanation {
+                    self.db.set_blocked_reason(id, &explanation)?;
+                }
+                self.db.event(Some(id), "workflow.blocked.unrecoverable", "system", json!({
+                    "reason": reason,
+                    "explanation": explanation
+                }))?;
+                Ok(false)
+            }
+        }
+    }
+
+    fn recover_blocked(&self, id: &str, item: &WorkItemSummary) -> Result<BlockedRecovery, String> {
+        if let Some(state) = item.resume_state.as_deref() {
+            if Database::is_valid_resume_state(state) {
+                return Ok(BlockedRecovery::Resume {
+                    state: state.to_string(),
+                    source: "stored_resume_state",
+                });
+            }
+        }
+        let artifacts = self.db.artifacts(id)?;
+        let executions = self.db.executions(Some(id))?;
+        let runs = self.db.runs(Some(id))?;
+        if let Some(state) = infer_resume_from_evidence(&artifacts, &executions, &runs) {
+            return Ok(BlockedRecovery::Resume {
+                state: state.to_string(),
+                source: "artifact_and_execution_evidence",
+            });
+        }
+        if let Some(state) = infer_resume_from_reason(&item.blocked_reason.clone().unwrap_or_default()) {
+            return Ok(BlockedRecovery::Resume {
+                state: state.to_string(),
+                source: "blocked_reason",
+            });
+        }
+        Ok(BlockedRecovery::Stay {
+            explanation: UNRECOVERABLE_BLOCK.to_string(),
+        })
     }
 
     fn stamped(&self, record: &ArtifactRecord) -> Value {
@@ -516,6 +557,14 @@ impl RuntimeService {
     }
 }
 
+enum BlockedRecovery {
+    Resume { state: String, source: &'static str },
+    Stay { explanation: String },
+}
+
+const UNRECOVERABLE_BLOCK: &str = "BLOCKED is not recoverable: resume_state is missing and artifacts/history do not identify a safe resume point.";
+const OVERWRITTEN_RESUME_ERROR: &str = "BLOCKED is missing resume_state";
+
 fn resume_target(state: &str) -> Option<&'static str> {
     match state {
         "IN_PRODUCTION" | "STRATEGIZED" | "REVISION_REQUIRED" => Some("STRATEGIZED"),
@@ -527,7 +576,55 @@ fn resume_target(state: &str) -> Option<&'static str> {
     }
 }
 
-fn infer_resume(reason: &str) -> Option<&'static str> {
+fn has_type(artifacts: &[ArtifactRecord], kind: &str) -> bool {
+    artifacts.iter().any(|a| a.artifact_type == kind)
+}
+
+fn brain_failed(executions: &[ExecutionRecord], runs: &[AgentRunRecord]) -> bool {
+    executions.iter().any(|e| e.role == "brain" && !e.success)
+        || runs.iter().any(|r| r.agent == "brain" && !r.success)
+}
+
+fn infer_resume_from_evidence(
+    artifacts: &[ArtifactRecord],
+    executions: &[ExecutionRecord],
+    runs: &[AgentRunRecord],
+) -> Option<&'static str> {
+    let has = |kind: &str| has_type(artifacts, kind);
+    if has("PERFORMANCE_SNAPSHOT") && !has("PERFORMANCE_INSIGHT") && !has("CYCLE_DECISION") {
+        return Some("MEASURING");
+    }
+    if has("PUBLICATION_RECEIPT") && !has("PERFORMANCE_SNAPSHOT") {
+        return Some("PUBLISHED");
+    }
+    if has("PUBLISH_PACKAGE") && !has("PUBLICATION_RECEIPT") {
+        return Some("READY_TO_PUBLISH");
+    }
+    if has("CONTENT_BRIEF") && !has("CONTENT_DRAFT") {
+        return Some("STRATEGIZED");
+    }
+    if brain_failed(executions, runs) && has("CONTENT_BRIEF") && !has("CONTENT_DRAFT") {
+        return Some("STRATEGIZED");
+    }
+    if has("CONTENT_DRAFT") && !has("PUBLISH_PACKAGE") {
+        return Some("STRATEGIZED");
+    }
+    if has("ASSIGNMENT") && !has("CONTENT_BRIEF") {
+        return Some("SELECTED");
+    }
+    if (has("OPPORTUNITY_CARD") || has("OPPORTUNITY_BATCH")) && !has("ASSIGNMENT") {
+        if has("GROWTH_DECISION") {
+            return None;
+        }
+        return Some("RESEARCHED");
+    }
+    None
+}
+
+fn infer_resume_from_reason(reason: &str) -> Option<&'static str> {
+    if reason.trim().is_empty() || reason == OVERWRITTEN_RESUME_ERROR || reason == UNRECOVERABLE_BLOCK {
+        return None;
+    }
     let reason = reason.to_lowercase();
     if reason.contains("json") || reason.contains("ollama") || reason.contains("provider") || reason.contains("brain") {
         return Some("STRATEGIZED");
@@ -953,5 +1050,63 @@ mod tests {
         assert_eq!(resume_target("IN_PRODUCTION"), Some("STRATEGIZED"));
         assert_eq!(resume_target("BLOCKED"), None);
         assert_eq!(resume_target("NEW"), None);
+        assert_eq!(infer_resume_from_reason(OVERWRITTEN_RESUME_ERROR), None);
+        assert_eq!(infer_resume_from_evidence(&[], &[], &[]), None);
+    }
+
+    #[tokio::test]
+    async fn overwritten_resume_error_recovers_from_brief_and_failed_brain() {
+        let (dir, service) = runtime();
+        service.db.set_setting("brain_force_fail", "true").unwrap();
+        let work = start(&service, "KERNEL GROK TEST 01 overwritten recovery metadata");
+        let blocked = service.advance_until_blocked(&work.work_item_id, false).await.unwrap();
+        assert!(blocked.artifacts.iter().any(|a| a.artifact_type == "CONTENT_BRIEF"));
+        assert!(blocked.artifacts.iter().all(|a| a.artifact_type != "CONTENT_DRAFT"));
+        assert!(blocked.executions.iter().any(|e| e.role == "brain" && !e.success));
+        {
+            let conn = rusqlite::Connection::open(dir.path().join("test.sqlite")).unwrap();
+            conn.execute(
+                "UPDATE work_items SET resume_state=NULL, blocked_reason=?2 WHERE work_item_id=?1",
+                rusqlite::params![&work.work_item_id, OVERWRITTEN_RESUME_ERROR],
+            ).unwrap();
+        }
+        let poisoned = service.db.work_item(&work.work_item_id).unwrap();
+        assert_eq!(poisoned.state, "BLOCKED");
+        assert!(poisoned.resume_state.is_none());
+        assert_eq!(poisoned.blocked_reason.as_deref(), Some(OVERWRITTEN_RESUME_ERROR));
+        assert_eq!(infer_resume_from_reason(OVERWRITTEN_RESUME_ERROR), None);
+
+        service.db.set_setting("brain_force_fail", "false").unwrap();
+        let resumed = service.advance_until_blocked(&work.work_item_id, true).await.unwrap();
+        assert_eq!(resumed.work_item.state, "READY_FOR_APPROVAL", "{:?}", resumed.work_item.blocked_reason);
+        assert_eq!(resumed.artifacts.iter().filter(|a| a.artifact_type == "OPPORTUNITY_CARD").count(), 1);
+        assert_eq!(resumed.artifacts.iter().filter(|a| a.artifact_type == "ASSIGNMENT").count(), 1);
+        assert_eq!(resumed.artifacts.iter().filter(|a| a.artifact_type == "CONTENT_BRIEF").count(), 1);
+        assert!(resumed.artifacts.iter().any(|a| a.artifact_type == "CONTENT_DRAFT"));
+        assert!(resumed.events.iter().any(|e| {
+            e.event_type == "workflow.resume_state.repaired"
+                && e.detail.get("source").and_then(Value::as_str) == Some("artifact_and_execution_evidence")
+                && e.detail.get("inferred").and_then(Value::as_str) == Some("STRATEGIZED")
+        }));
+    }
+
+    #[tokio::test]
+    async fn unknown_blocked_row_stays_blocked_without_guessing_strategized() {
+        let (dir, service) = runtime();
+        let work = start(&service, "Do not invent a resume point");
+        {
+            let conn = rusqlite::Connection::open(dir.path().join("test.sqlite")).unwrap();
+            conn.execute(
+                "UPDATE work_items SET state='BLOCKED', blocked_reason=?2, resume_state=NULL WHERE work_item_id=?1",
+                rusqlite::params![&work.work_item_id, OVERWRITTEN_RESUME_ERROR],
+            ).unwrap();
+        }
+        let stayed = service.advance_until_blocked(&work.work_item_id, true).await.unwrap();
+        assert_eq!(stayed.work_item.state, "BLOCKED");
+        assert!(stayed.work_item.resume_state.is_none());
+        assert_eq!(stayed.work_item.blocked_reason.as_deref(), Some(UNRECOVERABLE_BLOCK));
+        assert!(stayed.artifacts.iter().all(|a| a.artifact_type != "CONTENT_BRIEF"));
+        assert!(stayed.artifacts.iter().all(|a| a.artifact_type != "CONTENT_DRAFT"));
+        assert!(stayed.events.iter().any(|e| e.event_type == "workflow.blocked.unrecoverable"));
     }
 }

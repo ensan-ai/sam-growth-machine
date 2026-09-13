@@ -210,6 +210,17 @@ version=excluded.version,definition_status=excluded.definition_status"#,
         Ok(())
     }
 
+    pub fn set_blocked_reason(&self, id: &str, reason: &str) -> Result<(), String> {
+        let changed = self.open()?.execute(
+            "UPDATE work_items SET blocked_reason=?2, updated_at=?3 WHERE work_item_id=?1 AND state='BLOCKED'",
+            params![id, reason, Utc::now().to_rfc3339()],
+        ).map_err(|e| e.to_string())?;
+        if changed == 0 {
+            return Err("blocked_reason can only be updated while the work item is BLOCKED".into());
+        }
+        Ok(())
+    }
+
     pub fn set_setting(&self, key: &str, value: &str) -> Result<(), String> {
         self.open()?.execute("INSERT INTO settings(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value", params![key, value]).map_err(|e| e.to_string())?; Ok(())
     }

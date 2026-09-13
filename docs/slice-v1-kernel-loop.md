@@ -55,7 +55,15 @@ stateDiagram-v2
 
 `BLOCKED` always stores `resume_state`. Resume restores that state, not `NEW`.
 `resume_state` must be non-null and must not be `NEW` or `BLOCKED`.
-If Continue hits a BLOCKED row with a missing resume_state, the runtime repairs it from the failure reason and must not write BLOCKED→BLOCKED.
+Continue recovery order:
+
+1. valid stored `resume_state`
+2. durable artifact + execution evidence (last completed stage / missing next artifact)
+3. `blocked_reason` heuristic
+4. otherwise remain BLOCKED with an explicit non-recoverable reason
+
+Do not map an unknown BLOCKED row to `STRATEGIZED` just because `blocked_reason` was overwritten to `BLOCKED is missing resume_state`.
+Example: `CONTENT_BRIEF` exists, Brain execution failed, no `CONTENT_DRAFT` → repair to `STRATEGIZED` and retry Brain only.
 
 Examples:
 
@@ -142,5 +150,7 @@ These tests must prove a real loop, not fixture-complete success:
 - `publish_adapter_failure_resumes_ready_to_publish`
 - `live_style_provider_json_error_resumes_strategized`
 - `missing_resume_state_is_repaired_without_blocked_to_blocked`
+- `overwritten_resume_error_recovers_from_brief_and_failed_brain`
+- `unknown_blocked_row_stays_blocked_without_guessing_strategized`
 - `truncated_json_is_not_recovered`
 
