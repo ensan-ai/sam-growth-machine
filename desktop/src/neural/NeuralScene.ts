@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { layoutWorkforce, nodeRadius } from "../graph/layout";
+import { defaultCamera, layoutWorkforce, nodeRadius } from "../graph/layout";
 import type { CompanyGraph, GraphEdge, Vec3 } from "../graph/types";
 import { glowFragment, glowVertex, membraneFragment, organicVertex } from "./shaders";
 
@@ -57,9 +57,9 @@ function axonCurve(a: THREE.Vector3, b: THREE.Vector3, seed: number): THREE.Cubi
   let side = new THREE.Vector3().crossVectors(dir, up);
   if (side.lengthSq() < 1e-5) side.crossVectors(dir, new THREE.Vector3(1, 0, 0));
   side.normalize();
-  const lift = 0.28 + (seed % 80) / 220;
-  const c1 = a.clone().lerp(b, 0.28).addScaledVector(side, lift).addScaledVector(up, 0.22);
-  const c2 = a.clone().lerp(b, 0.72).addScaledVector(side, -lift * 0.45).addScaledVector(up, 0.38);
+  const lift = 0.05 + (seed % 40) / 900;
+  const c1 = a.clone().lerp(b, 0.34).addScaledVector(side, lift).addScaledVector(up, 0.04);
+  const c2 = a.clone().lerp(b, 0.66).addScaledVector(side, -lift * 0.5).addScaledVector(up, 0.05);
   return new THREE.CubicBezierCurve3(a, c1, c2, b);
 }
 
@@ -105,17 +105,19 @@ export class NeuralScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     element.appendChild(this.renderer.domElement);
-    this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 80);
-    this.camera.position.set(0.8, 2.4, 7.4);
-    this.scene.fog = new THREE.FogExp2(0x05121d, 0.048);
+    this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 40);
+    this.camera.position.set(0, 0.42, 3.15);
+    this.scene.fog = new THREE.FogExp2(0x05121d, 0.018);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.06;
-    this.controls.minDistance = 2.6;
-    this.controls.maxDistance = 18;
-    this.controls.target.set(0, 0.1, 0);
+    this.controls.dampingFactor = 0.07;
+    this.controls.minDistance = 2.2;
+    this.controls.maxDistance = 5.4;
+    this.controls.target.set(0, 0.05, 0.08);
+    this.controls.minPolarAngle = Math.PI * 0.32;
+    this.controls.maxPolarAngle = Math.PI * 0.66;
     this.controls.autoRotate = true;
-    this.controls.autoRotateSpeed = 0.35;
+    this.controls.autoRotateSpeed = 0.16;
     this.controls.addEventListener("start", () => {
       this.controls.autoRotate = false;
       this.idleRotateUntil = performance.now() + 9000;
@@ -124,11 +126,11 @@ export class NeuralScene {
     this.glowGeo = new THREE.PlaneGeometry(1, 1);
     this.synapseGeo = new THREE.SphereGeometry(1, 10, 8);
     this.pulseGeo = new THREE.SphereGeometry(1, 12, 10);
-    this.pulseMat = new THREE.MeshBasicMaterial({ color: 0xc8fff0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
-    this.synapseMat = new THREE.MeshBasicMaterial({ color: 0x9ee7f2, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false });
-    this.lineMat = new THREE.LineBasicMaterial({ color: 0x8fd4e4, transparent: true, opacity: 0.42 });
-    this.activeLineMat = new THREE.LineBasicMaterial({ color: 0xb7fff0, transparent: true, opacity: 0.78 });
-    this.handoffLineMat = new THREE.LineBasicMaterial({ color: 0xe7ffb0, transparent: true, opacity: 0.9 });
+    this.pulseMat = new THREE.MeshBasicMaterial({ color: 0xc5e8ff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+    this.synapseMat = new THREE.MeshBasicMaterial({ color: 0x8eb4d4, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
+    this.lineMat = new THREE.LineBasicMaterial({ color: 0x6d8ea8, transparent: true, opacity: 0.28 });
+    this.activeLineMat = new THREE.LineBasicMaterial({ color: 0x9ec8e6, transparent: true, opacity: 0.55 });
+    this.handoffLineMat = new THREE.LineBasicMaterial({ color: 0xd4e8ff, transparent: true, opacity: 0.7 });
     this.pulses = Array.from({ length: MAX_PULSES }, () => {
       const mesh = new THREE.Mesh(this.pulseGeo, this.pulseMat);
       mesh.visible = false;
@@ -160,13 +162,13 @@ export class NeuralScene {
     if (!mesh) return;
     this.controls.autoRotate = false;
     this.idleRotateUntil = performance.now() + 12000;
-    const dest = mesh.rest.clone().add(new THREE.Vector3(0.4, 1.2, 2.8));
+    const dest = mesh.rest.clone().add(new THREE.Vector3(0.15, 0.35, 1.55));
     this.animateCamera(dest, mesh.rest.clone());
   }
 
   resetView() {
     this.selectedId = "sam";
-    this.animateCamera(new THREE.Vector3(0.8, 2.4, 7.4), new THREE.Vector3(0, 0.1, 0));
+    this.frameCluster(true);
     this.idleRotateUntil = performance.now() + 400;
   }
 
@@ -213,7 +215,6 @@ export class NeuralScene {
           time: { value: 0 },
           energy: { value: 0 },
           radius: { value: radius },
-          color: { value: new THREE.Color(node.role === "human_authority" ? "#7bf0d6" : "#b7ecff") },
           blocked: { value: 0 },
           waiting: { value: 0 },
           authority: { value: node.role === "human_authority" ? 1 : 0 },
@@ -227,19 +228,19 @@ export class NeuralScene {
       const glowMaterial = new THREE.ShaderMaterial({
         vertexShader: glowVertex,
         fragmentShader: glowFragment,
-        uniforms: { color: { value: new THREE.Color("#8ceee0") }, energy: { value: 0 } },
+        uniforms: { energy: { value: 0 } },
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       });
       const glow = new THREE.Mesh(this.glowGeo, glowMaterial);
-      glow.scale.setScalar(radius * (node.role === "human_authority" ? 6.4 : 4.6));
+      glow.scale.setScalar(radius * (node.role === "human_authority" ? 2.35 : 2.05));
       group.add(glow, orb);
       const inner = new THREE.Mesh(
         this.synapseGeo,
-        new THREE.MeshBasicMaterial({ color: node.role === "human_authority" ? 0xeafffb : 0xb8f4ff, transparent: true, opacity: 0.85 }),
+        new THREE.MeshBasicMaterial({ color: node.role === "human_authority" ? 0xcfe8ff : 0x8fb4d8, transparent: true, opacity: 0.42 }),
       );
-      inner.scale.setScalar(radius * (node.role === "human_authority" ? 0.32 : 0.38));
+      inner.scale.setScalar(radius * (node.role === "human_authority" ? 0.22 : 0.28));
       group.add(inner);
       this.scene.add(group);
       this.nodes.set(node.id, {
@@ -254,6 +255,19 @@ export class NeuralScene {
       });
     });
     this.buildPathways(graph);
+    this.frameCluster(false);
+  }
+
+  private frameCluster(animate: boolean) {
+    const cam = defaultCamera(this.positions, Math.max(0.8, this.element.clientWidth / Math.max(1, this.element.clientHeight)));
+    const position = new THREE.Vector3(...cam.position);
+    const target = new THREE.Vector3(...cam.target);
+    if (animate) this.animateCamera(position, target);
+    else {
+      this.camera.position.copy(position);
+      this.controls.target.copy(target);
+      this.controls.update();
+    }
   }
 
   private buildPathways(graph: CompanyGraph) {
@@ -264,8 +278,8 @@ export class NeuralScene {
       const b = this.nodes.get(edge.target);
       if (!a || !b) return;
       const curve = axonCurve(a.rest, b.rest, hash(edge.id));
-      const tube = new THREE.TubeGeometry(curve, 48, edge.source === "sam" ? 0.028 : 0.014, 6, false);
-      const tubeMat = new THREE.MeshBasicMaterial({ color: 0x7ecfe0, transparent: true, opacity: 0.32 });
+      const tube = new THREE.TubeGeometry(curve, 32, edge.source === "sam" ? 0.016 : 0.009, 5, false);
+      const tubeMat = new THREE.MeshBasicMaterial({ color: 0x5d7c96, transparent: true, opacity: 0.38 });
       const mesh = new THREE.Mesh(tube, tubeMat);
       this.scene.add(mesh);
       const synapses = [0.32, 0.57, 0.82].map((t) => {
@@ -282,21 +296,21 @@ export class NeuralScene {
           const tangent = curve.getTangent(t);
           const side = tmp.crossVectors(tangent, new THREE.Vector3(0, 1, 0)).normalize();
           if (side.lengthSq() < 1e-4) side.set(1, 0, 0);
-          const end = origin.clone().addScaledVector(side, (i % 2 ? -1 : 1) * 0.38).add(new THREE.Vector3(0, 0.18, 0));
+          const end = origin.clone().addScaledVector(side, (i % 2 ? -1 : 1) * 0.11).add(new THREE.Vector3(0, 0.05, 0));
           const twigGeo = new THREE.BufferGeometry().setFromPoints([origin, origin.clone().lerp(end, 0.45), end]);
           const twig = new THREE.Line(twigGeo, this.lineMat);
           this.scene.add(twig);
           twigs.push(twig);
         });
       }
-      this.pathways.push({ id: edge.id, source: edge.source, target: edge.target, curve, mesh, synapses, twigs, relationship: "reports_to", restColor: 0x7ecfe0 });
+      this.pathways.push({ id: edge.id, source: edge.source, target: edge.target, curve, mesh, synapses, twigs, relationship: "reports_to", restColor: 0x5d7c96 });
     });
   }
 
   private addDust() {
     const positions = new Float32Array(MAX_DUST * 3);
     for (let i = 0; i < MAX_DUST; i++) {
-      const r = 2.2 + Math.random() * 5.5;
+      const r = 0.9 + Math.random() * 1.6;
       const t = Math.random() * Math.PI * 2;
       const y = (Math.random() - 0.45) * 3.2;
       positions[i * 3] = Math.cos(t) * r;
@@ -305,7 +319,7 @@ export class NeuralScene {
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.PointsMaterial({ color: 0x8fd4e4, size: 0.018, transparent: true, opacity: 0.22, depthWrite: false });
+    const mat = new THREE.PointsMaterial({ color: 0x6d8eaa, size: 0.012, transparent: true, opacity: 0.16, depthWrite: false });
     this.dust = new THREE.Points(geo, mat);
     this.scene.add(this.dust);
   }
@@ -392,16 +406,13 @@ export class NeuralScene {
     this.nodes.forEach((mesh, id) => {
       const node = byId.get(id);
       const status = node?.status || "IDLE";
-      const energy = status === "WORKING" ? 1 : status === "WAITING_FOR_SAM" ? 0.55 : status === "BLOCKED" ? 0.12 : 0.22;
+      const energy = status === "WORKING" ? 1 : status === "WAITING_FOR_SAM" ? 0.42 : status === "BLOCKED" ? 0.08 : 0.1;
       mesh.material.uniforms.time.value = time + mesh.seed;
       mesh.material.uniforms.energy.value = energy;
       mesh.material.uniforms.blocked.value = status === "BLOCKED" ? 1 : 0;
       mesh.material.uniforms.waiting.value = status === "WAITING_FOR_SAM" ? 1 : 0;
       mesh.glowMaterial.uniforms.energy.value = energy;
-      const tint = status === "BLOCKED" ? "#ffad84" : status === "WAITING_FOR_SAM" ? "#ffd89a" : status === "WORKING" ? "#8fffe2" : id === "sam" ? "#7bf0d6" : "#b7ecff";
-      mesh.material.uniforms.color.value.set(tint);
-      mesh.glowMaterial.uniforms.color.value.set(tint);
-      const breath = this.reduced.matches ? 0 : Math.sin(time * (status === "WORKING" ? 2.4 : 1.1) + mesh.seed) * (status === "WORKING" ? 0.045 : 0.018);
+      const breath = this.reduced.matches ? 0 : Math.sin(time * (status === "WORKING" ? 2.1 : 1.05) + mesh.seed) * (status === "WORKING" ? 0.012 : 0.008);
       const still = status === "BLOCKED" ? 0.35 : 1;
       mesh.group.position.y = mesh.rest.y + breath * still;
       mesh.glow.quaternion.copy(this.camera.quaternion);
@@ -413,8 +424,8 @@ export class NeuralScene {
       const dst = byId.get(path.target);
       const live = src?.status === "WORKING" || dst?.status === "WORKING" || src?.status === "WAITING_FOR_SAM" || dst?.status === "WAITING_FOR_SAM";
       const mat = path.mesh.material as THREE.MeshBasicMaterial;
-      mat.color.setHex(live ? 0xb7fff0 : path.restColor);
-      mat.opacity = live ? 0.55 : 0.32;
+      mat.color.setHex(live ? 0x8fb8d6 : path.restColor);
+      mat.opacity = live ? 0.52 : 0.38;
       path.synapses.forEach((s) => {
         s.scale.setScalar(live ? 0.04 : 0.024);
       });
@@ -441,8 +452,8 @@ export class NeuralScene {
       path.curve.getPoint(t, mesh.position);
       mesh.scale.setScalar(0.05 + Math.sin(t * Math.PI) * 0.04);
       const mat = path.mesh.material as THREE.MeshBasicMaterial;
-      mat.color.setHex(0xe7ffb0);
-      mat.opacity = 0.7;
+      mat.color.setHex(0xcfe6ff);
+      mat.opacity = 0.62;
       path.synapses.forEach((synapse, index) => {
         const at = 0.32 + index * 0.25;
         const near = Math.abs(t - at) < 0.12;
@@ -459,8 +470,8 @@ export class NeuralScene {
     const b = this.nodes.get(target);
     if (!a || !b) return;
     const curve = axonCurve(a.rest, b.rest, hash(source + target));
-    const tube = new THREE.TubeGeometry(curve, 40, 0.016, 5, false);
-    const tubeMat = new THREE.MeshBasicMaterial({ color: 0xe7ffb0, transparent: true, opacity: 0.55 });
+    const tube = new THREE.TubeGeometry(curve, 28, 0.01, 5, false);
+    const tubeMat = new THREE.MeshBasicMaterial({ color: 0x9ec4de, transparent: true, opacity: 0.5 });
     const mesh = new THREE.Mesh(tube, tubeMat);
     this.scene.add(mesh);
     const synapses = [0.35, 0.65].map((t) => {
@@ -470,7 +481,7 @@ export class NeuralScene {
       this.scene.add(mesh);
       return mesh;
     });
-    const path: Pathway = { id: `live:${source}:${target}`, source, target, curve, mesh, synapses, twigs: [], relationship: "handoff", restColor: 0xe7ffb0 };
+    const path: Pathway = { id: `live:${source}:${target}`, source, target, curve, mesh, synapses, twigs: [], relationship: "handoff", restColor: 0x9ec4de };
     this.pathways.push(path);
     return path;
   }
@@ -495,7 +506,7 @@ export class NeuralScene {
       };
       if (!mesh) return label;
       tmp.copy(mesh.group.position);
-      tmp.y -= mesh.radius + 0.12;
+      tmp.y -= mesh.radius + (label.authority ? 0.22 : 0.16);
       tmp.project(this.camera);
       label.x = (tmp.x * 0.5 + 0.5) * w;
       label.y = (-tmp.y * 0.5 + 0.5) * h;

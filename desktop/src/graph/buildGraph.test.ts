@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildCompanyGraph } from "./buildGraph";
-import { layoutWorkforce } from "./layout";
+import { CLUSTER_ENVELOPE, layoutWorkforce, parentChildDistance } from "./layout";
 import { shortSpecialty } from "./specialties";
 import type { Employee, Handoff } from "../types";
 
@@ -54,9 +54,14 @@ describe("layoutWorkforce", () => {
     });
     const a = layoutWorkforce(base.nodes);
     const b = layoutWorkforce(withLeo.nodes);
-    expect(a.get("sam")).toEqual([0, 0.35, 0]);
+    expect(a.get("sam")).toEqual([0, 0.06, 0]);
     expect(a.get("travis")).toEqual(b.get("travis"));
     expect(b.get("leo")).toBeTruthy();
+    const span = [...a.values()].reduce((m, p) => Math.max(m, Math.hypot(p[0], p[1], p[2])), 0);
+    expect(span).toBeLessThanOrEqual(CLUSTER_ENVELOPE + 0.001);
+    base.nodes.filter((n) => n.reportsTo).forEach((n) => {
+      expect(parentChildDistance(a, n)).toBeLessThan(0.85);
+    });
   });
 
   it("layouts 100 employees without dropping nodes", () => {
@@ -72,7 +77,9 @@ describe("layoutWorkforce", () => {
     const graph = buildCompanyGraph({ employees: crowd, handoffs: [], events: [], waitingApprovals: 0 });
     const positions = layoutWorkforce(graph.nodes);
     expect(positions.size).toBe(101);
-    expect(positions.get("sam")).toEqual([0, 0.35, 0]);
+    expect(positions.get("sam")).toEqual([0, 0.06, 0]);
+    const span = [...positions.values()].reduce((m, p) => Math.max(m, Math.hypot(p[0], p[1], p[2])), 0);
+    expect(span).toBeLessThanOrEqual(CLUSTER_ENVELOPE + 0.001);
   });
 });
 

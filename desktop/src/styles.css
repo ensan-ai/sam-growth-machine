@@ -80,22 +80,22 @@ main{min-height:0;overflow:auto;padding:0 36px 28px;flex:1}header{height:102px;d
 .organism-home .node-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .organism-home .node-label{
   position:absolute;left:0;top:0;width:auto;height:auto;min-width:70px;
-  transform:translate(-50%,0);padding:10px 8px 0;display:flex;flex-direction:column;align-items:center;
+  transform:translate(-50%,0);padding:22px 10px 0;display:flex;flex-direction:column;align-items:center;
   pointer-events:auto;background:none!important;border:0!important;
 }
 .organism-home .node-label .node-name{
   position:static;left:auto;top:auto;transform:none;white-space:nowrap;
-  font-size:12px;color:#def4f8;text-shadow:0 2px 14px #031018,0 0 18px rgba(90,180,190,.35);
+  font-size:12px;color:#e4eef6;text-shadow:0 2px 14px #031018,0 0 12px rgba(80,120,160,.28);
 }
 .organism-home .node-label small{
   position:static;left:auto;top:auto;transform:none;margin-top:3px;
-  font-size:9px;letter-spacing:.3px;color:#9adcc8;
+  font-size:9px;letter-spacing:.3px;color:#b7cbe0;
 }
 .organism-home .node-sam{width:auto;height:auto}
-.organism-home .node-sam .node-name{font-size:22px;font-weight:300;letter-spacing:2px}
-.organism-home .node-sam small{font-size:8px;letter-spacing:1.4px;color:#9ec9d4}
-.organism-home .node-label.working .node-name{color:#b9ffe9}
-.organism-home .node-label.blocked .node-name{color:#f0b69d}
-.organism-home .node-label.waiting_for_sam .node-name{color:#ffe3ad}
+.organism-home .node-sam .node-name{font-size:20px;font-weight:300;letter-spacing:2px;color:#f2f7fb}
+.organism-home .node-sam small{font-size:8px;letter-spacing:1.4px;color:#9db4c8}
+.organism-home .node-label.working .node-name{color:#e8f4ff}
+.organism-home .node-label.blocked .node-name{color:#ead8d0}
+.organism-home .node-label.waiting_for_sam .node-name{color:#efe6d4}
 .organism-home .text-link{padding:10px 0 0}
 
