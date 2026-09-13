@@ -162,9 +162,52 @@ version=excluded.version,definition_status=excluded.definition_status"#,
         self.update_work_item_with_resume(id, state, owner, blocked_reason, None)
     }
 
+    pub fn is_valid_resume_state(state: &str) -> bool {
+        matches!(
+            state,
+            "RESEARCHED" | "SELECTED" | "STRATEGIZED" | "IN_PRODUCTION" | "REVISION_REQUIRED"
+                | "READY_FOR_APPROVAL" | "APPROVED" | "READY_TO_PUBLISH" | "PUBLISHED" | "MEASURING"
+        )
+    }
+
+    pub fn enter_blocked(&self, id: &str, owner: &str, reason: &str, resume_state: &str) -> Result<String, String> {
+        let current = self.work_item(id)?;
+        let resume = if current.state == "BLOCKED" {
+            match current.resume_state.as_deref() {
+                Some(existing) if Self::is_valid_resume_state(existing) => existing.to_string(),
+                _ => {
+                    if Self::is_valid_resume_state(resume_state) {
+                        resume_state.to_string()
+                    } else {
+                        return Err("BLOCKED requires a valid non-NEW, non-BLOCKED resume_state".into());
+                    }
+                }
+            }
+        } else if Self::is_valid_resume_state(resume_state) {
+            resume_state.to_string()
+        } else {
+            return Err(format!("Refusing to persist invalid resume_state '{resume_state}'"));
+        };
+        let owner = if current.state == "BLOCKED" { current.current_owner.clone() } else { owner.to_string() };
+        let now = Utc::now().to_rfc3339();
+        self.open()?.execute(
+            "UPDATE work_items SET state='BLOCKED', current_owner=?2, blocked_reason=?3, resume_state=?4, updated_at=?5 WHERE work_item_id=?1",
+            params![id, owner, reason, resume.as_str(), now],
+        ).map_err(|e| e.to_string())?;
+        Ok(resume)
+    }
+
     pub fn update_work_item_with_resume(&self, id: &str, state: &str, owner: &str, blocked_reason: Option<&str>, resume_state: Option<&str>) -> Result<(), String> {
-        let resume = if state == "BLOCKED" { resume_state } else { None };
-        self.open()?.execute("UPDATE work_items SET state=?2,current_owner=?3,blocked_reason=?4,resume_state=?5,updated_at=?6 WHERE work_item_id=?1",params![id,state,owner,blocked_reason,resume,Utc::now().to_rfc3339()]).map_err(|e| e.to_string())?; Ok(())
+        if state == "BLOCKED" {
+            let resume = resume_state.ok_or_else(|| "BLOCKED requires a valid resume_state".to_string())?;
+            self.enter_blocked(id, owner, blocked_reason.unwrap_or("blocked"), resume)?;
+            return Ok(());
+        }
+        self.open()?.execute(
+            "UPDATE work_items SET state=?2, current_owner=?3, blocked_reason=?4, resume_state=NULL, updated_at=?5 WHERE work_item_id=?1",
+            params![id, state, owner, blocked_reason, Utc::now().to_rfc3339()],
+        ).map_err(|e| e.to_string())?;
+        Ok(())
     }
 
     pub fn set_setting(&self, key: &str, value: &str) -> Result<(), String> {
@@ -349,5 +392,25 @@ mod tests {
         let retry=db.start_run("logical-run",&work.work_item_id,"brain","writing","OLLAMA_PROVIDER","qwen3:14b").unwrap();assert!(retry.is_some());
         assert!(db.start_run("logical-run",&work.work_item_id,"brain","writing","OLLAMA_PROVIDER","qwen3:14b").unwrap().is_none());
         drop(db);let reopened=Database::new(&path).unwrap();assert_eq!(reopened.latest_artifact(&work.work_item_id,"CONTENT_DRAFT").unwrap().unwrap().version,2);assert_eq!(reopened.handoffs(&work.work_item_id).unwrap().len(),1);
+    }
+
+    #[test]
+    fn blocked_requires_and_preserves_valid_resume_state() {
+        let dir=tempfile::tempdir().unwrap();
+        let db=Database::new(dir.path().join("core.sqlite")).unwrap();
+        let work=db.create_work_item("test","signal").unwrap();
+        db.update_work_item(&work.work_item_id,"IN_PRODUCTION","brain + jax",None).unwrap();
+        let stored=db.enter_blocked(&work.work_item_id,"brain + jax","Provider output is not JSON","STRATEGIZED").unwrap();
+        assert_eq!(stored,"STRATEGIZED");
+        let item=db.work_item(&work.work_item_id).unwrap();
+        assert_eq!(item.state,"BLOCKED");
+        assert_eq!(item.resume_state.as_deref(),Some("STRATEGIZED"));
+        assert!(db.enter_blocked(&work.work_item_id,"system","BLOCKED is missing resume_state","BLOCKED").is_ok());
+        let preserved=db.work_item(&work.work_item_id).unwrap();
+        assert_eq!(preserved.resume_state.as_deref(),Some("STRATEGIZED"));
+        db.update_work_item(&work.work_item_id,"IN_PRODUCTION","brain + jax",None).unwrap();
+        assert!(db.update_work_item_with_resume(&work.work_item_id,"BLOCKED","system",Some("x"),None).is_err());
+        assert!(db.update_work_item_with_resume(&work.work_item_id,"BLOCKED","system",Some("x"),Some("NEW")).is_err());
+        assert!(db.update_work_item_with_resume(&work.work_item_id,"BLOCKED","system",Some("x"),Some("BLOCKED")).is_err());
     }
 }

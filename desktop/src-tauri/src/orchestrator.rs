@@ -84,9 +84,30 @@ impl RuntimeService {
                 Ok(false) => break,
                 Err(error) => {
                     let current = self.db.work_item(id)?;
-                    let resume = resume_target(&current.state);
-                    self.db.update_work_item_with_resume(id, "BLOCKED", &current.current_owner, Some(&error), Some(&resume))?;
-                    self.db.event(Some(id), "workflow.blocked", "system", json!({"error": error, "resume_state": resume}))?;
+                    if current.state == "BLOCKED" {
+                        self.db.event(Some(id), "workflow.blocked.preserved", "system", json!({
+                            "error": error,
+                            "resume_state": current.resume_state,
+                            "blocked_reason": current.blocked_reason
+                        }))?;
+                        break;
+                    }
+                    match resume_target(&current.state) {
+                        Some(resume) => {
+                            let stored = self.db.enter_blocked(id, &current.current_owner, &error, resume)?;
+                            self.db.event(Some(id), "workflow.blocked", "system", json!({
+                                "error": error,
+                                "resume_state": stored,
+                                "failed_from": current.state
+                            }))?;
+                        }
+                        None => {
+                            self.db.event(Some(id), "workflow.error", "system", json!({
+                                "error": error,
+                                "state": current.state
+                            }))?;
+                        }
+                    }
                     break;
                 }
             }
@@ -199,10 +220,12 @@ impl RuntimeService {
         let settings = self.db.settings()?;
         self.db.set_employee_status("brain", "WORKING")?;
         if settings.brain_force_fail {
-            let error = "Provider output is not JSON: forced invalid Brain output";
-            self.record(id, cap, Some("OLLAMA_PROVIDER"), Some(&settings.ollama_model), false, Some(error))?;
+            let error = crate::providers::interpret_ollama_body(&crate::providers::truncated_provider_error_body())
+                .unwrap_err();
+            self.record(id, cap, Some("OLLAMA_PROVIDER"), Some(&settings.ollama_model), false, Some(&error))?;
             self.db.set_employee_status("brain", "BLOCKED")?;
-            return Err(error.into());
+            self.db.event(Some(id), "model.failed", "brain", json!({"error": error, "forced": true, "fixture_recovery": false}))?;
+            return Err(error);
         }
         if test_mode {
             let payload = producers::write_public_copy(brief, revision);
@@ -425,10 +448,20 @@ impl RuntimeService {
         if is_policy_block(&reason) {
             return Ok(false);
         }
-        let resume = item.resume_state.clone().ok_or_else(|| "BLOCKED is missing resume_state".to_string())?;
-        if resume == "NEW" {
-            return Err("BLOCKED must not resume to NEW".into());
-        }
+        let resume = match item.resume_state.as_deref() {
+            Some(state) if Database::is_valid_resume_state(state) => state.to_string(),
+            _ => match infer_resume(&reason) {
+                Some(inferred) => {
+                    let stored = self.db.enter_blocked(id, &item.current_owner, &reason, inferred)?;
+                    self.db.event(Some(id), "workflow.resume_state.repaired", "system", json!({
+                        "inferred": stored,
+                        "reason": reason
+                    }))?;
+                    stored
+                }
+                None => return Ok(false),
+            },
+        };
         let owner = owner_for(&resume);
         self.db.event(Some(id), "workflow.resumed", "system", json!({"resume_state": resume, "reason": reason}))?;
         self.db.update_work_item(id, &resume, owner, None)?;
@@ -483,12 +516,26 @@ impl RuntimeService {
     }
 }
 
-fn resume_target(state: &str) -> String {
+fn resume_target(state: &str) -> Option<&'static str> {
     match state {
-        "IN_PRODUCTION" | "STRATEGIZED" | "REVISION_REQUIRED" => "STRATEGIZED".to_string(),
-        "APPROVED" => "READY_TO_PUBLISH".to_string(),
-        other => other.to_string(),
+        "IN_PRODUCTION" | "STRATEGIZED" | "REVISION_REQUIRED" => Some("STRATEGIZED"),
+        "APPROVED" | "READY_TO_PUBLISH" => Some("READY_TO_PUBLISH"),
+        "PUBLISHED" | "MEASURING" => Some("MEASURING"),
+        "SELECTED" => Some("SELECTED"),
+        "RESEARCHED" => Some("RESEARCHED"),
+        _ => None,
     }
+}
+
+fn infer_resume(reason: &str) -> Option<&'static str> {
+    let reason = reason.to_lowercase();
+    if reason.contains("json") || reason.contains("ollama") || reason.contains("provider") || reason.contains("brain") {
+        return Some("STRATEGIZED");
+    }
+    if reason.contains("adapter") || reason.contains("local_ledger") || reason.contains("approval") || reason.contains("maro") {
+        return Some("READY_TO_PUBLISH");
+    }
+    None
 }
 
 fn owner_for(state: &str) -> &'static str {
@@ -542,6 +589,14 @@ mod tests {
         &artifact(detail, kind).payload
     }
 
+    fn assert_blocked_invariant(item: &WorkItemSummary) {
+        assert_eq!(item.state, "BLOCKED");
+        let resume = item.resume_state.as_deref().expect("BLOCKED must persist resume_state");
+        assert!(Database::is_valid_resume_state(resume), "invalid resume_state {resume}");
+        assert_ne!(resume, "NEW");
+        assert_ne!(resume, "BLOCKED");
+    }
+
     #[tokio::test]
     async fn complete_cycle_stops_for_version_bound_approval_and_finishes() {
         let (_dir, service) = runtime();
@@ -572,6 +627,7 @@ mod tests {
         service.db.update_work_item(&work.work_item_id, "READY_TO_PUBLISH", "maro", None).unwrap();
         let detail = service.advance_until_blocked(&work.work_item_id, true).await.unwrap();
         assert_eq!(detail.work_item.state, "BLOCKED");
+        assert_blocked_invariant(&detail.work_item);
         assert_eq!(detail.work_item.resume_state.as_deref(), Some("READY_TO_PUBLISH"));
         assert!(detail.work_item.blocked_reason.unwrap().contains("approval"));
         let again = service.advance_until_blocked(&work.work_item_id, true).await.unwrap();
@@ -760,6 +816,7 @@ mod tests {
         let work = start(&service, "Brain schema failure should block at STRATEGIZED");
         let detail = service.advance_until_blocked(&work.work_item_id, true).await.unwrap();
         assert_eq!(detail.work_item.state, "BLOCKED");
+        assert_blocked_invariant(&detail.work_item);
         assert_eq!(detail.work_item.resume_state.as_deref(), Some("STRATEGIZED"));
         assert!(detail.work_item.blocked_reason.as_deref().unwrap_or("").contains("JSON"));
         service.db.set_setting("brain_force_fail", "false").unwrap();
@@ -817,6 +874,7 @@ mod tests {
         service.db.set_setting("publish_force_fail", "true").unwrap();
         let blocked = service.approval(ApprovalDecision { work_item_id: work.work_item_id.clone(), action: "APPROVE".into(), feedback: None }, true).await.unwrap();
         assert_eq!(blocked.work_item.state, "BLOCKED");
+        assert_blocked_invariant(&blocked.work_item);
         assert_eq!(blocked.work_item.resume_state.as_deref(), Some("READY_TO_PUBLISH"));
         service.db.set_setting("publish_force_fail", "false").unwrap();
         let resumed = service.advance_until_blocked(&work.work_item_id, true).await.unwrap();
@@ -833,5 +891,67 @@ mod tests {
         assert_eq!(snapshot.get("data_quality").and_then(Value::as_str), Some("COMPLETE"));
         assert_eq!(snapshot.get("mocked"), Some(&json!(true)));
         assert_eq!(snapshot.get("provenance").and_then(Value::as_str), Some("LOCAL_ADAPTER_SYNTHETIC"));
+    }
+
+    #[tokio::test]
+    async fn live_style_provider_json_error_resumes_strategized() {
+        let (_dir, service) = runtime();
+        service.db.set_setting("brain_force_fail", "true").unwrap();
+        let work = start(&service, "Live provider JSON truncation must resume Brain only");
+        let detail = service.advance_until_blocked(&work.work_item_id, false).await.unwrap();
+        assert_blocked_invariant(&detail.work_item);
+        assert_eq!(detail.work_item.resume_state.as_deref(), Some("STRATEGIZED"));
+        let reason = detail.work_item.blocked_reason.clone().unwrap_or_default();
+        assert!(reason.contains("truncated JSON"), "{reason}");
+        assert!(reason.contains("done_reason=length"), "{reason}");
+        assert!(reason.contains("eval_count=768"), "{reason}");
+        assert_eq!(detail.artifacts.iter().filter(|a| a.artifact_type == "OPPORTUNITY_CARD").count(), 1);
+        assert_eq!(detail.artifacts.iter().filter(|a| a.artifact_type == "CONTENT_BRIEF").count(), 1);
+        assert!(detail.artifacts.iter().all(|a| a.artifact_type != "CONTENT_DRAFT"));
+
+        service.db.set_setting("brain_force_fail", "false").unwrap();
+        let resumed = service.advance_until_blocked(&work.work_item_id, true).await.unwrap();
+        assert_eq!(resumed.work_item.state, "READY_FOR_APPROVAL", "{:?}", resumed.work_item.blocked_reason);
+        assert_eq!(resumed.artifacts.iter().filter(|a| a.artifact_type == "OPPORTUNITY_CARD").count(), 1);
+        assert_eq!(resumed.artifacts.iter().filter(|a| a.artifact_type == "ASSIGNMENT").count(), 1);
+        assert_eq!(resumed.artifacts.iter().filter(|a| a.artifact_type == "CONTENT_BRIEF").count(), 1);
+        assert!(resumed.artifacts.iter().any(|a| a.artifact_type == "CONTENT_DRAFT"));
+    }
+
+    #[tokio::test]
+    async fn missing_resume_state_is_repaired_without_blocked_to_blocked() {
+        let (dir, service) = runtime();
+        service.db.set_setting("brain_force_fail", "true").unwrap();
+        let work = start(&service, "Null resume_state must not become BLOCKED to BLOCKED");
+        let blocked = service.advance_until_blocked(&work.work_item_id, false).await.unwrap();
+        assert_blocked_invariant(&blocked.work_item);
+        let path = dir.path().join("test.sqlite");
+        {
+            let conn = rusqlite::Connection::open(&path).unwrap();
+            conn.execute("UPDATE work_items SET resume_state=NULL WHERE work_item_id=?1", [&work.work_item_id]).unwrap();
+        }
+        let poisoned = service.db.work_item(&work.work_item_id).unwrap();
+        assert_eq!(poisoned.state, "BLOCKED");
+        assert!(poisoned.resume_state.is_none());
+
+        service.db.set_setting("brain_force_fail", "false").unwrap();
+        let resumed = service.advance_until_blocked(&work.work_item_id, true).await.unwrap();
+        assert_ne!(resumed.work_item.state, "NEW");
+        assert_ne!(resumed.work_item.resume_state.as_deref(), Some("BLOCKED"));
+        assert_eq!(resumed.work_item.state, "READY_FOR_APPROVAL", "{:?}", resumed.work_item.blocked_reason);
+        assert!(resumed.events.iter().any(|e| e.event_type == "workflow.resume_state.repaired" || e.event_type == "workflow.resumed"));
+    }
+
+    #[test]
+    fn blocked_resume_state_invariant() {
+        assert!(!Database::is_valid_resume_state("NEW"));
+        assert!(!Database::is_valid_resume_state("BLOCKED"));
+        assert!(!Database::is_valid_resume_state(""));
+        assert!(!Database::is_valid_resume_state("CANCELLED"));
+        assert!(Database::is_valid_resume_state("STRATEGIZED"));
+        assert!(Database::is_valid_resume_state("READY_TO_PUBLISH"));
+        assert_eq!(resume_target("IN_PRODUCTION"), Some("STRATEGIZED"));
+        assert_eq!(resume_target("BLOCKED"), None);
+        assert_eq!(resume_target("NEW"), None);
     }
 }
