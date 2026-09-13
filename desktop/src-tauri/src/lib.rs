@@ -13,6 +13,7 @@ mod providers;
 mod router;
 mod runner;
 mod schema_fixture;
+mod task_prepare;
 mod task_store;
 
 #[cfg(feature = "desktop")]
@@ -24,7 +25,9 @@ use models::*;
 #[cfg(feature = "desktop")]
 use orchestrator::RuntimeService;
 #[cfg(feature = "desktop")]
-use task_store::{CommandTask, CreateCommandTaskRequest, TaskEvent, TaskStore};
+use task_prepare::{PrepareCommandTaskResult, TaskPrepareEngine};
+#[cfg(feature = "desktop")]
+use task_store::{CommandTask, CreateCommandTaskRequest, TaskEvent, TaskPreparation, TaskStore};
 
 #[cfg(feature = "desktop")]
 use tauri::{Manager, State};
@@ -125,14 +128,39 @@ fn get_command_task_events(task_id: Option<String>, store: State<'_, TaskStore>)
 
 #[cfg(feature = "desktop")]
 #[tauri::command]
+fn get_command_task_preparation(task_id: String, store: State<'_, TaskStore>) -> Result<Option<TaskPreparation>, String> {
+    store.preparation(&task_id)
+}
+
+#[cfg(feature = "desktop")]
+#[tauri::command]
 fn create_command_task(request: CreateCommandTaskRequest, store: State<'_, TaskStore>) -> Result<CommandTask, String> {
     store.create(&request)
 }
 
 #[cfg(feature = "desktop")]
 #[tauri::command]
-fn prepare_command_task(task_id: String, store: State<'_, TaskStore>) -> Result<CommandTask, String> {
-    store.prepare(&task_id, "sam")
+async fn prepare_command_task(
+    task_id: String,
+    store: State<'_, TaskStore>,
+    service: State<'_, RuntimeService>,
+) -> Result<PrepareCommandTaskResult, String> {
+    let root = repository_root()?;
+    let engine = TaskPrepareEngine::new(store.inner().clone(), service.db.clone(), root);
+    engine.prepare(&task_id, "sam").await
+}
+
+#[cfg(feature = "desktop")]
+#[tauri::command]
+fn answer_command_task_preparation(
+    task_id: String,
+    decision: String,
+    store: State<'_, TaskStore>,
+    service: State<'_, RuntimeService>,
+) -> Result<TaskPreparation, String> {
+    let root = repository_root()?;
+    let engine = TaskPrepareEngine::new(store.inner().clone(), service.db.clone(), root);
+    engine.answer_operator(&task_id, &decision)
 }
 
 #[cfg(feature = "desktop")]
@@ -172,8 +200,9 @@ pub fn run() {
             get_dashboard, get_team, get_work_items, get_work_item, get_approvals,
             get_activity, get_settings, save_settings, check_providers,
             start_work_item, run_work_item, decide_approval, company_control,
-            get_command_tasks, get_command_task_events, create_command_task,
-            prepare_command_task, start_command_task, review_command_task, complete_command_task
+            get_command_tasks, get_command_task_events, get_command_task_preparation,
+            create_command_task, prepare_command_task, answer_command_task_preparation,
+            start_command_task, review_command_task, complete_command_task
         ])
         .run(tauri::generate_context!())
         .expect("error while running SAM Neural Core");
