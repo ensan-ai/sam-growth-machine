@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, CircleDot, Clock3, Play, Plus, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { runtime } from "../services/runtime";
 import type { CommandExecutionMode, CommandTask, CommandTaskStatus } from "../types";
+import { TaskActivityPanel } from "./TaskActivityPanel";
+import { TaskPreparationPanel } from "./TaskPreparationPanel";
 import "./TaskCommandCenter.css";
 
 const lanes: {status:CommandTaskStatus; label:string; hint:string}[] = [
   {status:"BLOCKED", label:"Blocked", hint:"Waiting on dependencies"},
   {status:"TODO", label:"Todo", hint:"Ready or prepared"},
   {status:"IN_PROGRESS", label:"In progress", hint:"Being executed"},
-  {status:"REVIEW", label:"Review", hint:"Needs validation"},
+  {status:"REVIEW", label:"Review", hint:"Needs Sam review"},
   {status:"DONE", label:"Done", hint:"Completed and unblocked"},
 ];
 
@@ -76,13 +78,15 @@ export function TaskCommandCenter(){
         <div><dt>Milestone</dt><dd>{selected.milestone || "—"}</dd></div>
         <div><dt>Dependencies</dt><dd>{selected.dependencyIds.join(", ") || "None"}</dd></div>
       </dl>
-      {selected.promptMarkdown&&<details className="task-prompt"><summary>Prepared execution prompt</summary><pre>{selected.promptMarkdown}</pre></details>}
+
+      <TaskPreparationPanel task={selected} onChanged={refresh}/>
+
       <div className="task-actions">
-        {selected.status==="TODO"&&!selected.preparedAt&&<button disabled={busy} onClick={()=>run(()=>runtime.prepareCommandTask(selected.taskId))}><Sparkles size={15}/> Prepare task</button>}
-        {selected.status==="TODO"&&selected.preparedAt&&<button className="primary" disabled={busy} onClick={()=>run(()=>runtime.startCommandTask(selected.taskId))}><Play size={15}/> Start task</button>}
         {selected.status==="IN_PROGRESS"&&<button className="primary" disabled={busy} onClick={()=>run(()=>runtime.reviewCommandTask(selected.taskId))}><ShieldCheck size={15}/> Send to review</button>}
         {selected.status==="REVIEW"&&<button className="primary" disabled={busy} onClick={()=>run(()=>runtime.completeCommandTask(selected.taskId))}><CheckCircle2 size={15}/> Complete task</button>}
       </div>
+
+      <TaskActivityPanel taskId={selected.taskId}/>
     </aside>}
 
     {creating&&<CreateTaskModal tasks={tasks} close={()=>setCreating(false)} submit={async data=>{await run(()=>runtime.createCommandTask(data));setCreating(false);}}/>}
