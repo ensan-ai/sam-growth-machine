@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Activity, Approval, Dashboard, Employee, ProviderStatus, Settings, WorkDetail, WorkItem } from "../types";
+import type { Activity, Approval, CommandTask, CommandTaskEvent, CreateCommandTask, Dashboard, Employee, ProviderStatus, Settings, WorkDetail, WorkItem } from "../types";
 
 export const runtime = {
   dashboard: () => invoke<Dashboard>("get_dashboard"),
@@ -15,4 +15,12 @@ export const runtime = {
   decideApproval: (workItemId:string,action:"APPROVE"|"REQUEST_REVISION"|"REJECT",feedback?:string) => invoke<WorkDetail>("decide_approval", { decision:{ workItemId,action,feedback } }),
   control: (action:"RUN"|"PAUSE"|"RESUME"|"STOP") => invoke<Settings>("company_control", { request:{ action } }),
   saveSettings: (settings:Omit<Settings,"companyControl">) => invoke<Settings>("save_settings", { request:settings }),
+
+  commandTasks: () => invoke<CommandTask[]>("get_command_tasks"),
+  commandTaskEvents: (taskId?:string) => invoke<CommandTaskEvent[]>("get_command_task_events", { taskId }),
+  createCommandTask: (request:CreateCommandTask) => invoke<CommandTask>("create_command_task", { request }),
+  prepareCommandTask: (taskId:string) => invoke<CommandTask>("prepare_command_task", { taskId }),
+  startCommandTask: (taskId:string) => invoke<CommandTask>("start_command_task", { taskId }),
+  reviewCommandTask: (taskId:string) => invoke<CommandTask>("review_command_task", { taskId }),
+  completeCommandTask: (taskId:string) => invoke<CommandTask>("complete_command_task", { taskId }),
 };
