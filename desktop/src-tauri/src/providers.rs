@@ -3,7 +3,7 @@ use reqwest::Client;
 use serde_json::{json, Value};
 use std::{collections::HashMap, time::Duration};
 
-use crate::{models::{ProviderStatus, RuntimeSettings}, schema_fixture::generate_for_type_with_resources};
+use crate::models::{ProviderStatus, RuntimeSettings};
 
 #[derive(Debug, Clone)]
 pub struct ProviderRequest {
@@ -66,12 +66,16 @@ impl AiProvider for OpenAiProvider {
     }
 }
 
+#[allow(dead_code)]
 pub struct MockProvider { model:String }
 impl MockProvider { pub fn new()->Self{Self{model:"deterministic-schema-fixture-v1".into()}} }
 #[async_trait]
 impl AiProvider for MockProvider {
     fn name(&self)->&'static str{"MOCK_PROVIDER"} fn model(&self)->&str{&self.model}
-    async fn generate(&self,request:&ProviderRequest)->Result<ProviderResponse,String>{Ok(ProviderResponse{output:generate_for_type_with_resources(&request.output_schema,&request.expected_type,&request.schema_resources),token_usage:None,estimated_cost:Some(0.0)})}
+    async fn generate(&self, request: &ProviderRequest) -> Result<ProviderResponse, String> {
+        let _ = request;
+        Err("MOCK_PROVIDER cannot be used as a success path in the kernel slice".into())
+    }
 }
 
 pub async fn detect(settings:&RuntimeSettings)->ProviderStatus{
