@@ -4,7 +4,7 @@ import { runtime } from "../services/runtime";
 import type { CommandTask, CommandTaskPreparation } from "../types";
 
 export function TaskPreparationPanel({task,onChanged}:{task:CommandTask;onChanged:()=>Promise<void>}){
-  const [prep,setPrep]=useState<CommandTaskPreparation>();
+  const [prep,setPrep]=useState<CommandTaskPreparation|null>(null);
   const [decision,setDecision]=useState("");
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState<string>();
