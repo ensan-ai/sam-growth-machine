@@ -199,7 +199,10 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             let database_path = data_dir.join("sam-neural-core.sqlite3");
             let database = Database::new(&database_path).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
-            let task_store = TaskStore::new(&database_path).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
+            let task_store = TaskStore::new_with_shared_state(
+                &database_path,
+                root.join(".sam-runtime/shared_state.json"),
+            ).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
             let service = RuntimeService::new(database, definitions).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
             app.manage(service);
             app.manage(task_store);
