@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/travis/schemas/output.schema.json",
+  "title": "Travis Output Contract",
+  "description": "Strict, extensible Phase 2A artifacts produced by Travis.",
+  "oneOf": [
+    {"$ref": "#/$defs/growthDecision"},
+    {"$ref": "#/$defs/weeklyGrowthPlan"},
+    {"$ref": "#/$defs/assignment"},
+    {"$ref": "#/$defs/cycleDecision"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assessment", "basis"],
+      "properties": {
+        "assessment": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A qualitative confidence assessment; the exact taxonomy remains unresolved."
+        },
+        "basis": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "artifactCore": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "artifact_id",
+        "artifact_type",
+        "created_by",
+        "source_input_references"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_id": {"type": "string", "minLength": 1},
+        "artifact_type": {"type": "string"},
+        "created_by": {"const": "travis"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "growthDecision": {
+      "allOf": [
+        {"$ref": "#/$defs/artifactCore"},
+        {
+          "type": "object",
+          "required": [
+            "opportunity_reference",
+            "decision",
+            "rationale",
+            "priority",
+            "intended_outcome",
+            "confidence",
+            "next_destination"
+          ],
+          "properties": {
+            "artifact_type": {"const": "GROWTH_DECISION"},
+            "opportunity_reference": {"type": "string", "minLength": 1},
+            "decision": {
+              "enum": ["pursue", "defer", "reject", "request_more_evidence"]
+            },
+            "rationale": {"type": "string", "minLength": 1},
+            "priority": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Priority label; exact taxonomy remains unresolved."
+            },
+            "intended_outcome": {"type": "string", "minLength": 1},
+            "confidence": {"$ref": "#/$defs/confidence"},
+            "next_destination": {
+              "enum": ["sam", "saly", "adam", "maro", "lara", "none"]
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "channelPriority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["channel", "rationale"],
+      "properties": {
+        "channel": {
+          "enum": [
+            "Instagram Reels",
+            "TikTok",
+            "YouTube Shorts",
+            "Facebook Reels",
+            "LinkedIn",
+            "X",
+            "Facebook Feed"
+          ]
+        },
+        "rationale": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "contentAllocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["original_shorts", "linkedin_posts", "x_posts", "facebook_feed_posts"],
+      "properties": {
+        "original_shorts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "distribution_channels"],
+          "properties": {
+            "count": {"const": 3},
+            "distribution_channels": {
+              "type": "array",
+              "prefixItems": [
+                {"const": "Instagram Reels"},
+                {"const": "TikTok"},
+                {"const": "YouTube Shorts"},
+                {"const": "Facebook Reels"}
+              ],
+              "items": false,
+              "minItems": 4,
+              "maxItems": 4
+            }
+          }
+        },
+        "linkedin_posts": {"const": 3},
+        "x_posts": {"const": 2},
+        "facebook_feed_posts": {"const": 3},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "experiment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["experiment_reference", "hypothesis", "proposed_action", "approval_required"],
+      "properties": {
+        "experiment_reference": {"type": "string", "minLength": 1},
+        "hypothesis": {"type": "string", "minLength": 1},
+        "proposed_action": {"type": "string", "minLength": 1},
+        "approval_required": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "approvalSensitiveItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_reference", "reason"],
+      "properties": {
+        "item_reference": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "weeklyGrowthPlan": {
+      "allOf": [
+        {"$ref": "#/$defs/artifactCore"},
+        {
+          "type": "object",
+          "required": [
+            "week_identifier",
+            "primary_objective",
+            "secondary_objectives",
+            "selected_themes",
+            "channel_priorities",
+            "target_content_allocation",
+            "expected_outcome",
+            "risks",
+            "experiments",
+            "work_assigned",
+            "approval_sensitive_items",
+            "unresolved_dependencies"
+          ],
+          "properties": {
+            "artifact_type": {"const": "WEEKLY_GROWTH_PLAN"},
+            "week_identifier": {"type": "string", "minLength": 1},
+            "primary_objective": {"type": "string", "minLength": 1},
+            "secondary_objectives": {"$ref": "#/$defs/stringArray"},
+            "selected_themes": {"$ref": "#/$defs/nonEmptyStringArray"},
+            "channel_priorities": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/channelPriority"}
+            },
+            "target_content_allocation": {"$ref": "#/$defs/contentAllocation"},
+            "expected_outcome": {"type": "string", "minLength": 1},
+            "risks": {"$ref": "#/$defs/stringArray"},
+            "experiments": {"type": "array", "items": {"$ref": "#/$defs/experiment"}},
+            "work_assigned": {"$ref": "#/$defs/stringArray"},
+            "approval_sensitive_items": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/approvalSensitiveItem"}
+            },
+            "unresolved_dependencies": {"$ref": "#/$defs/stringArray"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "approvalRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "approver", "reason"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "approver": {"enum": ["sam", null]},
+        "reason": {"type": ["string", "null"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"required": {"const": true}}},
+          "then": {
+            "properties": {
+              "approver": {"const": "sam"},
+              "reason": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      ]
+    },
+    "assignment": {
+      "allOf": [
+        {"$ref": "#/$defs/artifactCore"},
+        {
+          "type": "object",
+          "required": [
+            "recipient",
+            "objective",
+            "source_artifact_reference",
+            "expected_deliverable",
+            "priority",
+            "deadline_or_window",
+            "success_condition",
+            "approval_requirement",
+            "context"
+          ],
+          "properties": {
+            "artifact_type": {"const": "ASSIGNMENT"},
+            "recipient": {"enum": ["saly", "adam", "brain", "jax", "maro", "lara"]},
+            "objective": {"type": "string", "minLength": 1},
+            "source_artifact_reference": {"type": "string", "minLength": 1},
+            "expected_deliverable": {"type": "string", "minLength": 1},
+            "priority": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Priority label; exact taxonomy remains unresolved."
+            },
+            "deadline_or_window": {"type": ["string", "null"]},
+            "success_condition": {"type": "string", "minLength": 1},
+            "approval_requirement": {"$ref": "#/$defs/approvalRequirement"},
+            "context": {"type": "string", "minLength": 1}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "cycleDecision": {
+      "allOf": [
+        {"$ref": "#/$defs/artifactCore"},
+        {
+          "type": "object",
+          "required": [
+            "performance_insight_reference",
+            "decision",
+            "evidence",
+            "rationale",
+            "next_action"
+          ],
+          "properties": {
+            "artifact_type": {"const": "CYCLE_DECISION"},
+            "performance_insight_reference": {"type": "string", "minLength": 1},
+            "decision": {
+              "enum": ["DOUBLE_DOWN", "CONTINUE", "MODIFY", "PAUSE", "STOP", "TEST"]
+            },
+            "evidence": {"$ref": "#/$defs/nonEmptyStringArray"},
+            "rationale": {"type": "string", "minLength": 1},
+            "next_action": {"type": "string", "minLength": 1},
+            "experiment_implication": {"type": ["string", "null"]}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

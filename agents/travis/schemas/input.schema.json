@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/travis/schemas/input.schema.json",
+  "title": "Travis Input Contract",
+  "description": "Strict Phase 2A input envelopes for Travis. Upstream employee schemas remain independently unresolved.",
+  "oneOf": [
+    {"$ref": "#/$defs/samGoal"},
+    {"$ref": "#/$defs/opportunityBatch"},
+    {"$ref": "#/$defs/performanceInsight"},
+    {"$ref": "#/$defs/systemStatus"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "samGoal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "SAM_GOAL"},
+        "source": {"const": "sam"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["goal", "intended_outcome"],
+          "properties": {
+            "goal": {"type": "string", "minLength": 1},
+            "intended_outcome": {"type": "string", "minLength": 1},
+            "context": {"type": "string"},
+            "constraints": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "opportunitySummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "opportunity_reference",
+        "summary",
+        "evidence_summary",
+        "relevance_to_practical_ai_for_real_work",
+        "intended_audience"
+      ],
+      "properties": {
+        "opportunity_reference": {"type": "string", "minLength": 1},
+        "summary": {"type": "string", "minLength": 1},
+        "evidence_summary": {"type": "string", "minLength": 1},
+        "relevance_to_practical_ai_for_real_work": {"type": "string", "minLength": 1},
+        "intended_audience": {"type": "string", "minLength": 1},
+        "source_artifact_references": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "time_sensitivity": {"type": ["string", "null"]},
+        "known_risks": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "opportunityBatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "OPPORTUNITY_BATCH"},
+        "source": {"const": "saly"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["batch_reference", "opportunities"],
+          "properties": {
+            "batch_reference": {"type": "string", "minLength": 1},
+            "opportunities": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/opportunitySummary"},
+              "minItems": 1
+            },
+            "batch_context": {"type": "string"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "performanceInsight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "PERFORMANCE_INSIGHT"},
+        "source": {"const": "lara"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "insight_reference",
+            "observation",
+            "supporting_evidence",
+            "qualified_audience_signal",
+            "confidence"
+          ],
+          "properties": {
+            "insight_reference": {"type": "string", "minLength": 1},
+            "observation": {"type": "string", "minLength": 1},
+            "supporting_evidence": {"$ref": "#/$defs/nonEmptyStringArray"},
+            "qualified_audience_signal": {"type": "string", "minLength": 1},
+            "confidence": {"type": "string", "minLength": 1},
+            "affected_artifact_references": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "limitations": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "targetProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_reference", "completed", "target", "status"],
+      "properties": {
+        "target_reference": {"type": "string", "minLength": 1},
+        "completed": {"type": "integer", "minimum": 0},
+        "target": {"type": "integer", "minimum": 0},
+        "status": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "blockedWork": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_reference", "reason"],
+      "properties": {
+        "work_reference": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "owner": {"type": ["string", "null"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "systemStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "SYSTEM_STATUS"},
+        "source": {"const": "system"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reporting_window",
+            "publishing_target_progress",
+            "blocked_work",
+            "pending_approval_references",
+            "failed_task_references"
+          ],
+          "properties": {
+            "reporting_window": {"type": "string", "minLength": 1},
+            "publishing_target_progress": {"type": "array", "items": {"$ref": "#/$defs/targetProgress"}},
+            "blocked_work": {"type": "array", "items": {"$ref": "#/$defs/blockedWork"}},
+            "pending_approval_references": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "failed_task_references": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    }
+  }
+}

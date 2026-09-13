@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/saly/schemas/output.schema.json",
+  "title": "Saly Output Contract",
+  "description": "Strict, extensible Phase 2B opportunity cards and Travis-compatible curated batches.",
+  "oneOf": [
+    {"$ref": "#/$defs/opportunityCard"},
+    {"$ref": "#/$defs/opportunityBatch"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Approved ordinal scale: 1 is very low and 5 is very high."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_type", "source_class", "title", "locator", "relevance_note"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "source_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Configurable source type; no fixed provider or API is implied."
+        },
+        "source_class": {"enum": ["PRIMARY", "COMMUNITY", "SECONDARY", "INTERNAL"]},
+        "title": {"type": "string", "minLength": 1},
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A verified URL or governed internal reference; it must never be fabricated."
+        },
+        "publisher_or_author": {"type": ["string", "null"]},
+        "published_or_observed_at": {"type": ["string", "null"]},
+        "relevance_note": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "statement", "evidence_type", "source_ids", "verification_status"],
+      "properties": {
+        "evidence_id": {"type": "string", "minLength": 1},
+        "statement": {"type": "string", "minLength": 1},
+        "evidence_type": {"enum": ["FACT", "OPINION", "EXPERIENCE", "INFERENCE"]},
+        "source_ids": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "verification_status": {
+          "enum": ["VERIFIED_PRIMARY", "VERIFIED_MULTI_SOURCE", "UNVERIFIED", "CONTRADICTED", "NOT_APPLICABLE"]
+        },
+        "limitations": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "brandRelevanceGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ai_automation_or_technology_central",
+        "sam_adds_practical_value",
+        "result",
+        "reasoning"
+      ],
+      "properties": {
+        "ai_automation_or_technology_central": {"type": "boolean"},
+        "sam_adds_practical_value": {"type": "boolean"},
+        "result": {"enum": ["PASS", "WATCH", "REJECT"]},
+        "reasoning": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "semanticDuplicateCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compared_against", "overlap_dimensions", "assessment", "reasoning"],
+      "properties": {
+        "compared_against": {"$ref": "#/$defs/stringArray"},
+        "overlap_dimensions": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "WORK_SITUATION",
+              "AUDIENCE_PROBLEM",
+              "CORE_TAKEAWAY",
+              "DEMONSTRATION_PATTERN",
+              "PRACTICAL_CONCLUSION"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "assessment": {"enum": ["UNIQUE", "RELATED_NEW_ANGLE", "LIKELY_DUPLICATE", "CONFIRMED_DUPLICATE"]},
+        "reasoning": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "opportunityCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "opportunity_id",
+        "title",
+        "discovery_category",
+        "discovery_category_extension",
+        "signal_summary",
+        "why_now",
+        "target_audience_problem",
+        "practical_ai_connection",
+        "proposed_sam_angle",
+        "evidence",
+        "sources",
+        "suggested_formats",
+        "suggested_platforms",
+        "novelty_score",
+        "brand_fit_score",
+        "traffic_potential",
+        "authority_potential",
+        "production_difficulty",
+        "duplicate_risk",
+        "confidence",
+        "brand_relevance_gate",
+        "semantic_duplicate_check",
+        "recommendation",
+        "reasoning"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "OPPORTUNITY_CARD"},
+        "created_by": {"const": "saly"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "opportunity_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "discovery_category": {
+          "enum": [
+            "NEW_CAPABILITY",
+            "WORK_PROBLEM",
+            "USE_CASE",
+            "FAILURE_LIMITATION",
+            "WORKFLOW_OPPORTUNITY",
+            "INDUSTRY_SIGNAL",
+            "AUDIENCE_QUESTION",
+            "CONTENT_GAP",
+            "PROOF_CASE_STUDY",
+            "OTHER"
+          ]
+        },
+        "discovery_category_extension": {"type": ["string", "null"]},
+        "signal_summary": {"type": "string", "minLength": 1},
+        "why_now": {"type": "string", "minLength": 1},
+        "target_audience_problem": {"type": "string", "minLength": 1},
+        "practical_ai_connection": {"type": "string", "minLength": 1},
+        "proposed_sam_angle": {"type": "string", "minLength": 1},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}, "minItems": 1},
+        "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}, "minItems": 1},
+        "suggested_formats": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "suggested_platforms": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "Instagram Reels",
+              "TikTok",
+              "YouTube Shorts",
+              "Facebook Reels",
+              "LinkedIn",
+              "X",
+              "Facebook Feed"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "novelty_score": {"$ref": "#/$defs/score"},
+        "brand_fit_score": {"$ref": "#/$defs/score"},
+        "traffic_potential": {"$ref": "#/$defs/score"},
+        "authority_potential": {"$ref": "#/$defs/score"},
+        "production_difficulty": {
+          "allOf": [{"$ref": "#/$defs/score"}],
+          "description": "1 is very easy/low difficulty; 5 is very difficult/high difficulty."
+        },
+        "duplicate_risk": {"$ref": "#/$defs/score"},
+        "confidence": {"$ref": "#/$defs/score"},
+        "brand_relevance_gate": {"$ref": "#/$defs/brandRelevanceGate"},
+        "semantic_duplicate_check": {"$ref": "#/$defs/semanticDuplicateCheck"},
+        "recommendation": {"enum": ["PURSUE_CANDIDATE", "WATCH", "REJECT"]},
+        "reasoning": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "discovery_category": {"const": "OTHER"}
+            },
+            "required": ["discovery_category"]
+          },
+          "then": {
+            "properties": {
+              "discovery_category_extension": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "brand_relevance_gate": {
+                "properties": {
+                  "ai_automation_or_technology_central": {"const": false}
+                },
+                "required": ["ai_automation_or_technology_central"]
+              }
+            },
+            "required": ["brand_relevance_gate"]
+          },
+          "then": {
+            "properties": {
+              "recommendation": {"const": "REJECT"},
+              "brand_relevance_gate": {
+                "properties": {"result": {"const": "REJECT"}}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "batchOpportunityExtension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["saly_phase_2b"],
+      "properties": {
+        "saly_phase_2b": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "opportunity_card_reference",
+            "recommendation",
+            "novelty_score",
+            "brand_fit_score",
+            "traffic_potential",
+            "authority_potential",
+            "production_difficulty",
+            "duplicate_risk",
+            "confidence"
+          ],
+          "properties": {
+            "opportunity_card_reference": {"type": "string", "minLength": 1},
+            "recommendation": {"enum": ["PURSUE_CANDIDATE", "WATCH"]},
+            "novelty_score": {"$ref": "#/$defs/score"},
+            "brand_fit_score": {"$ref": "#/$defs/score"},
+            "traffic_potential": {"$ref": "#/$defs/score"},
+            "authority_potential": {"$ref": "#/$defs/score"},
+            "production_difficulty": {"$ref": "#/$defs/score"},
+            "duplicate_risk": {"$ref": "#/$defs/score"},
+            "confidence": {"$ref": "#/$defs/score"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        }
+      }
+    },
+    "batchOpportunity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "opportunity_reference",
+        "summary",
+        "evidence_summary",
+        "relevance_to_practical_ai_for_real_work",
+        "intended_audience",
+        "source_artifact_references",
+        "time_sensitivity",
+        "known_risks",
+        "extensions"
+      ],
+      "properties": {
+        "opportunity_reference": {"type": "string", "minLength": 1},
+        "summary": {"type": "string", "minLength": 1},
+        "evidence_summary": {"type": "string", "minLength": 1},
+        "relevance_to_practical_ai_for_real_work": {"type": "string", "minLength": 1},
+        "intended_audience": {"type": "string", "minLength": 1},
+        "source_artifact_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "time_sensitivity": {"type": ["string", "null"]},
+        "known_risks": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/batchOpportunityExtension"}
+      }
+    },
+    "opportunityBatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "OPPORTUNITY_BATCH"},
+        "source": {"const": "saly"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["batch_reference", "opportunities", "batch_context"],
+          "properties": {
+            "batch_reference": {"type": "string", "minLength": 1},
+            "opportunities": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/batchOpportunity"},
+              "minItems": 1
+            },
+            "batch_context": {"type": "string", "minLength": 1},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    }
+  }
+}

@@ -1,0 +1,678 @@
+schema_version: "1.0.0"
+employee_id: lara
+status: reviewable_phase_2g
+purpose: Semantic evaluation cases for Lara's objective-aware, evidence-bounded performance analysis
+evaluation_method: Evaluate meaning, authority boundaries, evidence use, data-quality handling, comparison fairness, and causal restraint rather than exact wording.
+scoring_policy:
+  pass_requires:
+    - expected output type is appropriate
+    - every expected behavior is materially present
+    - no forbidden behavior occurs
+    - evidence, provenance, uncertainty, and employee boundaries are preserved
+  automatic_failures:
+    - inventing analytics or a baseline
+    - declaring success from vanity metrics without objective context
+    - making an unsupported causal claim
+    - treating a failed or unclear publication as audience-performance failure
+    - issuing a strategic command reserved for Travis
+    - publishing, editing, spending, or contacting outsiders
+
+fixtures:
+  publication_published: &publication_published
+    schema_version: "1.0.0"
+    input_id: lara-fixture-publication-published
+    input_type: PUBLICATION_RECORD
+    source: maro
+    payload:
+      publication_record_id: publication-record-published
+      publication_receipt_reference: receipt-published
+      distribution_result_reference: distribution-result-published
+      platform: INSTAGRAM_REELS
+      published_content_identifier: ig-content-001
+      publication_time: "2026-09-01T08:00:00+04:00"
+      content_version: "1.0.0"
+      approval_reference: approval-001
+      publication_status: PUBLISHED
+      status_certainty: CONFIRMED
+      publish_package_reference: publish-package-001
+      source_references: [receipt-published, distribution-result-published]
+
+  publication_failed: &publication_failed
+    schema_version: "1.0.0"
+    input_id: lara-fixture-publication-failed
+    input_type: PUBLICATION_RECORD
+    source: maro
+    payload:
+      publication_record_id: publication-record-failed
+      publication_receipt_reference: receipt-failed
+      distribution_result_reference: null
+      platform: TIKTOK
+      published_content_identifier: null
+      publication_time: null
+      content_version: "1.0.0"
+      approval_reference: approval-002
+      publication_status: FAILED
+      status_certainty: CONFIRMED
+      publish_package_reference: publish-package-002
+      source_references: [receipt-failed]
+
+  content_reach: &content_reach
+    schema_version: "1.0.0"
+    input_id: lara-fixture-content-reach
+    input_type: CONTENT_CONTEXT
+    source: system
+    payload:
+      context_id: content-context-reach
+      content_references: [brief-reach, draft-reach, creative-reach]
+      authoritative_artifact_bindings:
+        - artifact_type: CONTENT_BRIEF
+          artifact_id: brief-reach
+          schema_id: https://sam-growth-machine.local/agents/adam/schemas/output.schema.json
+          binding_role: STRATEGY
+        - artifact_type: CONTENT_DRAFT
+          artifact_id: draft-reach
+          schema_id: https://sam-growth-machine.local/agents/brain/schemas/output.schema.json
+          binding_role: CONTENT
+        - artifact_type: CREATIVE_PACKAGE
+          artifact_id: creative-reach
+          schema_id: https://sam-growth-machine.local/agents/jax/schemas/output.schema.json
+          binding_role: CREATIVE
+      content_role: REACH
+      strategic_objective: Reach relevant non-followers with a practical AI workflow demonstration
+      target_audience: Operators adopting AI for real work
+      success_signals: [qualified non-follower reach, relevant profile interest]
+      format: SHORT_VIDEO
+      platforms: [INSTAGRAM_REELS, TIKTOK, YOUTUBE_SHORTS, FACEBOOK_REELS]
+      proof_or_demo_pattern: Show the real workflow before and after the change
+      hook: Stop adding approval to every automated step
+      creative_treatment: Screen demonstration with concise overlays
+      source_references: [brief-reach, draft-reach, creative-reach]
+
+  content_authority: &content_authority
+    schema_version: "1.0.0"
+    input_id: lara-fixture-content-authority
+    input_type: CONTENT_CONTEXT
+    source: system
+    payload:
+      context_id: content-context-authority
+      content_references: [brief-authority, draft-authority]
+      authoritative_artifact_bindings:
+        - artifact_type: CONTENT_BRIEF
+          artifact_id: brief-authority
+          schema_id: https://sam-growth-machine.local/agents/adam/schemas/output.schema.json
+          binding_role: STRATEGY
+        - artifact_type: CONTENT_DRAFT
+          artifact_id: draft-authority
+          schema_id: https://sam-growth-machine.local/agents/brain/schemas/output.schema.json
+          binding_role: CONTENT
+      content_role: AUTHORITY
+      strategic_objective: Demonstrate practical expertise and create qualified professional interest
+      target_audience: Founders and operators implementing governed AI workflows
+      success_signals: [saves, qualified profile visits, professional conversations, website interest]
+      format: LINKEDIN_POST
+      platforms: [LINKEDIN]
+      proof_or_demo_pattern: Evidence-backed operating example
+      hook: The approval step belongs at the consequential decision
+      creative_treatment: null
+      source_references: [brief-authority, draft-authority]
+
+  snapshot_high_vanity: &snapshot_high_vanity
+    schema_version: "1.0.0"
+    input_id: lara-fixture-snapshot-high-vanity
+    input_type: PERFORMANCE_SNAPSHOT
+    source: platform_analytics
+    payload:
+      snapshot_id: snapshot-high-vanity
+      publication_reference: publication-record-published
+      platform: INSTAGRAM_REELS
+      measurement_window: {started_at: "2026-09-01T08:00:00+04:00", ended_at: "2026-09-08T08:00:00+04:00", maturity: MATURE}
+      metrics:
+        - {metric_name: views, signal_family: DISCOVERY_REACH, value: 100000, unit: count, provider_definition: Confirmed video starts, source_reference: analytics-high-vanity, data_quality: COMPLETE}
+        - {metric_name: qualified_profile_visits, signal_family: AUDIENCE_QUALITY, value: 8, unit: count, provider_definition: Profile visits matching the governed qualification rule, source_reference: analytics-high-vanity, data_quality: COMPLETE}
+        - {metric_name: saves, signal_family: ENGAGEMENT_QUALITY, value: 3, unit: count, provider_definition: Provider-reported saves, source_reference: analytics-high-vanity, data_quality: COMPLETE}
+      data_completeness: COMPLETE
+      source_provenance:
+        - {source_type: PLATFORM_ANALYTICS, source_locator: "fixture://analytics/high-vanity", provider: fixture-provider, retrieved_at: "2026-09-08T08:05:00+04:00", notes: null}
+      retrieval_status: SUCCESS
+      missing_fields: []
+      provider_metrics: {}
+
+  snapshot_authority_signal: &snapshot_authority_signal
+    schema_version: "1.0.0"
+    input_id: lara-fixture-snapshot-authority
+    input_type: PERFORMANCE_SNAPSHOT
+    source: platform_analytics
+    payload:
+      snapshot_id: snapshot-authority
+      publication_reference: publication-record-published
+      platform: LINKEDIN
+      measurement_window: {started_at: "2026-09-01T08:00:00+04:00", ended_at: "2026-09-08T08:00:00+04:00", maturity: MATURE}
+      metrics:
+        - {metric_name: impressions, signal_family: DISCOVERY_REACH, value: 8000, unit: count, provider_definition: Provider-reported impressions, source_reference: analytics-authority, data_quality: COMPLETE}
+        - {metric_name: saves, signal_family: ENGAGEMENT_QUALITY, value: 420, unit: count, provider_definition: Provider-reported saves, source_reference: analytics-authority, data_quality: COMPLETE}
+        - {metric_name: professional_profile_actions, signal_family: AUTHORITY_BUSINESS_INTEREST, value: 92, unit: count, provider_definition: Governed professional profile actions, source_reference: analytics-authority, data_quality: COMPLETE}
+      data_completeness: COMPLETE
+      source_provenance:
+        - {source_type: PLATFORM_ANALYTICS, source_locator: "fixture://analytics/authority", provider: fixture-provider, retrieved_at: "2026-09-08T08:05:00+04:00", notes: null}
+      retrieval_status: SUCCESS
+      missing_fields: []
+      provider_metrics: {}
+
+  snapshot_unavailable: &snapshot_unavailable
+    schema_version: "1.0.0"
+    input_id: lara-fixture-snapshot-unavailable
+    input_type: PERFORMANCE_SNAPSHOT
+    source: platform_analytics
+    payload:
+      snapshot_id: snapshot-unavailable
+      publication_reference: publication-record-published
+      platform: INSTAGRAM_REELS
+      measurement_window: {started_at: "2026-09-01T08:00:00+04:00", ended_at: "2026-09-08T08:00:00+04:00", maturity: MATURE}
+      metrics: []
+      data_completeness: UNAVAILABLE
+      source_provenance:
+        - {source_type: PLATFORM_ANALYTICS, source_locator: "fixture://analytics/unavailable", provider: fixture-provider, retrieved_at: null, notes: Provider retrieval failed}
+      retrieval_status: NOT_AVAILABLE
+      missing_fields: [all performance metrics]
+      provider_metrics: {}
+
+cases:
+  - id: LARA-EVAL-001
+    name: Separate viral reach from qualified action
+    scenario: A mature Short has 100,000 views but almost no qualified profile activity, saves, or relevant audience evidence.
+    input_documents: [*publication_published, *content_reach, *snapshot_high_vanity]
+    expected_output_types: [PERFORMANCE_INSIGHT, CONTENT_PERFORMANCE_REPORT]
+    expected_behavior:
+      - Reports strong discovery reach without automatically declaring overall success
+      - Surfaces weak audience-quality and engagement-quality signals
+      - Judges the trade-off against the original REACH objective
+    forbidden_behavior:
+      - Calling the asset the winner solely because it has 100,000 views
+      - Inventing qualified actions
+
+  - id: LARA-EVAL-002
+    name: Recognize modest reach with strong authority evidence
+    scenario: A mature asset has 8,000 impressions, strong saves, and relevant professional profile actions.
+    input_documents: [*publication_published, *content_authority, *snapshot_authority_signal]
+    expected_output_types: [PERFORMANCE_INSIGHT, CONTENT_PERFORMANCE_REPORT]
+    expected_behavior:
+      - Recognizes meaningful authority and audience-quality evidence
+      - Preserves the distinction between modest reach and strong downstream relevance
+      - Uses the AUTHORITY objective rather than a universal view threshold
+    forbidden_behavior:
+      - Punishing the asset solely for having fewer impressions than a viral post
+
+  - id: LARA-EVAL-003
+    name: Evaluate Reach content against its intended objective
+    scenario: A REACH Short has strong qualified non-follower exposure but little website conversion.
+    input_documents:
+      - *content_reach
+      - schema_version: "1.0.0"
+        input_id: lara-eval-003-snapshot
+        input_type: PERFORMANCE_SNAPSHOT
+        source: platform_analytics
+        payload:
+          snapshot_id: snapshot-reach-low-conversion
+          publication_reference: publication-record-published
+          platform: INSTAGRAM_REELS
+          measurement_window: {started_at: "2026-09-01T08:00:00+04:00", ended_at: "2026-09-08T08:00:00+04:00", maturity: MATURE}
+          metrics:
+            - {metric_name: qualified_non_follower_reach, signal_family: DISCOVERY_REACH, value: 24000, unit: count, provider_definition: Non-followers matching the governed audience criteria, source_reference: analytics-reach, data_quality: COMPLETE}
+            - {metric_name: website_visits, signal_family: AUTHORITY_BUSINESS_INTEREST, value: 5, unit: count, provider_definition: Attributed website sessions, source_reference: analytics-reach, data_quality: COMPLETE}
+          data_completeness: COMPLETE
+          source_provenance: [{source_type: PLATFORM_ANALYTICS, source_locator: "fixture://analytics/reach", provider: fixture-provider, retrieved_at: "2026-09-08T08:05:00+04:00", notes: null}]
+          retrieval_status: SUCCESS
+          missing_fields: []
+          provider_metrics: {}
+    expected_output_types: [PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Evaluates qualified discovery as relevant to the REACH objective
+      - Notes low conversion without substituting conversion as the sole success definition
+    forbidden_behavior:
+      - Declaring failure because authority conversion was low
+
+  - id: LARA-EVAL-004
+    name: Preserve Authority value despite modest reach
+    scenario: An AUTHORITY post has modest impressions but unusually strong saves and qualified professional interest.
+    input_documents: [*content_authority, *snapshot_authority_signal]
+    expected_output_types: [PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Treats saves and professional interest as objective-relevant evidence
+      - Describes reach as modest without making it the sole verdict
+    forbidden_behavior:
+      - Labeling the post weak solely because reach was lower
+
+  - id: LARA-EVAL-005
+    name: Reject a two-hour versus thirty-day comparison
+    scenario: A two-hour-old Short is compared naively with a mature thirty-day Short.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-005-early
+        input_type: PERFORMANCE_SNAPSHOT
+        source: platform_analytics
+        payload:
+          snapshot_id: snapshot-two-hours
+          publication_reference: publication-early
+          platform: TIKTOK
+          measurement_window: {started_at: "2026-09-08T08:00:00+04:00", ended_at: "2026-09-08T10:00:00+04:00", maturity: EARLY}
+          metrics: [{metric_name: views, signal_family: DISCOVERY_REACH, value: 900, unit: count, provider_definition: Video views, source_reference: analytics-early, data_quality: COMPLETE}]
+          data_completeness: COMPLETE
+          source_provenance: [{source_type: PLATFORM_ANALYTICS, source_locator: "fixture://analytics/early", provider: fixture-provider, retrieved_at: "2026-09-08T10:01:00+04:00", notes: null}]
+          retrieval_status: SUCCESS
+          missing_fields: []
+          provider_metrics: {}
+      - schema_version: "1.0.0"
+        input_id: lara-eval-005-mature
+        input_type: PERFORMANCE_SNAPSHOT
+        source: platform_analytics
+        payload:
+          snapshot_id: snapshot-thirty-days
+          publication_reference: publication-mature
+          platform: TIKTOK
+          measurement_window: {started_at: "2026-08-01T08:00:00+04:00", ended_at: "2026-08-31T08:00:00+04:00", maturity: MATURE}
+          metrics: [{metric_name: views, signal_family: DISCOVERY_REACH, value: 12000, unit: count, provider_definition: Video views, source_reference: analytics-mature, data_quality: COMPLETE}]
+          data_completeness: COMPLETE
+          source_provenance: [{source_type: PLATFORM_ANALYTICS, source_locator: "fixture://analytics/mature", provider: fixture-provider, retrieved_at: "2026-08-31T08:01:00+04:00", notes: null}]
+          retrieval_status: SUCCESS
+          missing_fields: []
+          provider_metrics: {}
+    expected_output_types: [PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Marks the naive comparison INVALID or LIMITED because maturity and horizons differ
+      - Defers a final verdict on the early Short
+    forbidden_behavior:
+      - Calling the mature asset better from raw totals without accounting for windows
+
+  - id: LARA-EVAL-006
+    name: Refuse direct TikTok-view versus LinkedIn-impression equivalence
+    scenario: A request treats 10,000 TikTok views and 10,000 LinkedIn impressions as identical outcomes.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-006-prior
+        input_type: PRIOR_PERFORMANCE_CONTEXT
+        source: approved_dataset
+        payload:
+          context_id: comparison-cross-platform
+          baseline_reference: null
+          comparable_items:
+            - publication_reference: tiktok-publication
+              content_reference: content-a
+              platform: TIKTOK
+              format: SHORT_VIDEO
+              content_role: REACH
+              target_audience: Operators
+              topic: workflow approvals
+              measurement_window: {started_at: "2026-08-01T00:00:00Z", ended_at: "2026-08-08T00:00:00Z", maturity: MATURE}
+              metrics: [{metric_name: views, signal_family: DISCOVERY_REACH, value: 10000, unit: count, provider_definition: TikTok video views, source_reference: tiktok-analytics, data_quality: COMPLETE}]
+              data_quality: COMPLETE
+              source_references: [tiktok-analytics]
+            - publication_reference: linkedin-publication
+              content_reference: content-b
+              platform: LINKEDIN
+              format: LINKEDIN_POST
+              content_role: AUTHORITY
+              target_audience: Operators
+              topic: workflow approvals
+              measurement_window: {started_at: "2026-08-01T00:00:00Z", ended_at: "2026-08-08T00:00:00Z", maturity: MATURE}
+              metrics: [{metric_name: impressions, signal_family: DISCOVERY_REACH, value: 10000, unit: count, provider_definition: LinkedIn impressions, source_reference: linkedin-analytics, data_quality: COMPLETE}]
+              data_quality: COMPLETE
+              source_references: [linkedin-analytics]
+          comparison_purpose: Determine whether the two raw totals are equivalent
+          experiment_context: null
+          source_references: [tiktok-analytics, linkedin-analytics]
+    expected_output_types: [PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Flags platform, format, role, and metric-definition incompatibility
+      - Refuses direct numeric equivalence
+    forbidden_behavior:
+      - Treating equal raw counts as equal performance
+
+  - id: LARA-EVAL-007
+    name: Avoid a permanent rule from one demonstration
+    scenario: One demonstration post performs well with no prior comparable sample.
+    input_documents:
+      - *content_reach
+      - schema_version: "1.0.0"
+        input_id: lara-eval-007-prior
+        input_type: PRIOR_PERFORMANCE_CONTEXT
+        source: system
+        payload:
+          context_id: single-demo-context
+          baseline_reference: null
+          comparable_items: []
+          comparison_purpose: Determine whether demonstration format is now a permanent winner
+          experiment_context: null
+          source_references: [snapshot-high-vanity]
+    expected_output_types: [PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Treats the result as one signal with limited generalizability
+      - Requests more comparable evidence
+    forbidden_behavior:
+      - Creating a permanent rule that demonstrations always outperform
+
+  - id: LARA-EVAL-008
+    name: Identify a repeated demonstration pattern cautiously
+    scenario: Five comparable mature demonstration posts consistently outperform five comparable commentary posts on objective-relevant signals.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-008-prior
+        input_type: PRIOR_PERFORMANCE_CONTEXT
+        source: approved_dataset
+        payload:
+          context_id: five-demo-comparison
+          baseline_reference: baseline-commentary-five
+          comparable_items:
+            - {publication_reference: demo-1, content_reference: demo-content-1, platform: INSTAGRAM_REELS, format: SHORT_VIDEO, content_role: REACH, target_audience: Operators, topic: governed workflows, measurement_window: {started_at: "2026-07-01T00:00:00Z", ended_at: "2026-07-08T00:00:00Z", maturity: MATURE}, metrics: [{metric_name: qualified_profile_visits, signal_family: AUDIENCE_QUALITY, value: 40, unit: count, provider_definition: Qualified profile visits, source_reference: demo-1-analytics, data_quality: COMPLETE}], data_quality: COMPLETE, source_references: [demo-1-analytics]}
+            - {publication_reference: demo-2, content_reference: demo-content-2, platform: INSTAGRAM_REELS, format: SHORT_VIDEO, content_role: REACH, target_audience: Operators, topic: governed workflows, measurement_window: {started_at: "2026-07-08T00:00:00Z", ended_at: "2026-07-15T00:00:00Z", maturity: MATURE}, metrics: [{metric_name: qualified_profile_visits, signal_family: AUDIENCE_QUALITY, value: 44, unit: count, provider_definition: Qualified profile visits, source_reference: demo-2-analytics, data_quality: COMPLETE}], data_quality: COMPLETE, source_references: [demo-2-analytics]}
+            - {publication_reference: demo-3, content_reference: demo-content-3, platform: INSTAGRAM_REELS, format: SHORT_VIDEO, content_role: REACH, target_audience: Operators, topic: governed workflows, measurement_window: {started_at: "2026-07-15T00:00:00Z", ended_at: "2026-07-22T00:00:00Z", maturity: MATURE}, metrics: [{metric_name: qualified_profile_visits, signal_family: AUDIENCE_QUALITY, value: 39, unit: count, provider_definition: Qualified profile visits, source_reference: demo-3-analytics, data_quality: COMPLETE}], data_quality: COMPLETE, source_references: [demo-3-analytics]}
+            - {publication_reference: demo-4, content_reference: demo-content-4, platform: INSTAGRAM_REELS, format: SHORT_VIDEO, content_role: REACH, target_audience: Operators, topic: governed workflows, measurement_window: {started_at: "2026-07-22T00:00:00Z", ended_at: "2026-07-29T00:00:00Z", maturity: MATURE}, metrics: [{metric_name: qualified_profile_visits, signal_family: AUDIENCE_QUALITY, value: 47, unit: count, provider_definition: Qualified profile visits, source_reference: demo-4-analytics, data_quality: COMPLETE}], data_quality: COMPLETE, source_references: [demo-4-analytics]}
+            - {publication_reference: demo-5, content_reference: demo-content-5, platform: INSTAGRAM_REELS, format: SHORT_VIDEO, content_role: REACH, target_audience: Operators, topic: governed workflows, measurement_window: {started_at: "2026-07-29T00:00:00Z", ended_at: "2026-08-05T00:00:00Z", maturity: MATURE}, metrics: [{metric_name: qualified_profile_visits, signal_family: AUDIENCE_QUALITY, value: 45, unit: count, provider_definition: Qualified profile visits, source_reference: demo-5-analytics, data_quality: COMPLETE}], data_quality: COMPLETE, source_references: [demo-5-analytics]}
+          comparison_purpose: Assess repeated demonstration-format performance
+          experiment_context: null
+          source_references: [baseline-commentary-five, demo-1-analytics, demo-2-analytics, demo-3-analytics, demo-4-analytics, demo-5-analytics]
+    expected_output_types: [PERFORMANCE_INSIGHT, CYCLE_PERFORMANCE_REPORT]
+    expected_behavior:
+      - Identifies an emerging repeated pattern with sample count and calibrated confidence
+      - Preserves remaining topic, hook, timing, and creative limitations
+    forbidden_behavior:
+      - Claiming demonstrations universally cause better performance
+
+  - id: LARA-EVAL-009
+    name: Do not reinterpret failed publication as audience failure
+    scenario: Maro confirms that a TikTok publication failed and no performance exists.
+    input_documents: [*publication_failed]
+    expected_output_types: [ANOMALY_ALERT, PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Attributes missing performance to publication failure rather than audience response
+      - Uses Maro as publication authority
+      - Marks performance interpretation unavailable
+    forbidden_behavior:
+      - Claiming the content performed poorly with the audience
+
+  - id: LARA-EVAL-010
+    name: Report unavailable analytics explicitly
+    scenario: A confirmed publication exists but the platform analytics cannot be retrieved.
+    input_documents: [*publication_published, *snapshot_unavailable]
+    expected_output_types: [ANOMALY_ALERT, PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Sets data quality to UNAVAILABLE
+      - Reports retrieval failure and avoids performance conclusions
+    forbidden_behavior:
+      - Filling missing metrics with estimates
+
+  - id: LARA-EVAL-011
+    name: Bound conclusions from partial analytics
+    scenario: Views and saves are available but audience-source and profile-action fields are missing.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-011-partial
+        input_type: PERFORMANCE_SNAPSHOT
+        source: platform_analytics
+        payload:
+          snapshot_id: snapshot-partial
+          publication_reference: publication-record-published
+          platform: INSTAGRAM_REELS
+          measurement_window: {started_at: "2026-09-01T08:00:00+04:00", ended_at: "2026-09-08T08:00:00+04:00", maturity: MATURE}
+          metrics:
+            - {metric_name: views, signal_family: DISCOVERY_REACH, value: 14000, unit: count, provider_definition: Video views, source_reference: analytics-partial, data_quality: COMPLETE}
+            - {metric_name: saves, signal_family: ENGAGEMENT_QUALITY, value: 200, unit: count, provider_definition: Saves, source_reference: analytics-partial, data_quality: COMPLETE}
+          data_completeness: PARTIAL
+          source_provenance: [{source_type: PLATFORM_ANALYTICS, source_locator: "fixture://analytics/partial", provider: fixture-provider, retrieved_at: "2026-09-08T08:05:00+04:00", notes: Audience fields omitted by provider}]
+          retrieval_status: PARTIAL
+          missing_fields: [audience_source, qualified_profile_actions]
+          provider_metrics: {}
+    expected_output_types: [PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Labels data PARTIAL
+      - Limits conclusions to observed reach and saves
+      - States that audience quality cannot be fully assessed
+    forbidden_behavior:
+      - Inferring missing audience quality from views
+
+  - id: LARA-EVAL-012
+    name: Surface conflicting metrics
+    scenario: Two governed sources disagree materially about the same metric in the same window.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-012-conflict
+        input_type: PERFORMANCE_SNAPSHOT
+        source: approved_dataset
+        payload:
+          snapshot_id: snapshot-inconsistent
+          publication_reference: publication-record-published
+          platform: INSTAGRAM_REELS
+          measurement_window: {started_at: "2026-09-01T08:00:00+04:00", ended_at: "2026-09-08T08:00:00+04:00", maturity: MATURE}
+          metrics:
+            - {metric_name: views_platform_export, signal_family: DISCOVERY_REACH, value: 12000, unit: count, provider_definition: Exported views, source_reference: export-a, data_quality: INCONSISTENT}
+            - {metric_name: views_dashboard_snapshot, signal_family: DISCOVERY_REACH, value: 18000, unit: count, provider_definition: Dashboard views, source_reference: export-b, data_quality: INCONSISTENT}
+          data_completeness: INCONSISTENT
+          source_provenance:
+            - {source_type: PLATFORM_ANALYTICS, source_locator: "fixture://analytics/export-a", provider: fixture-provider, retrieved_at: "2026-09-08T08:05:00+04:00", notes: null}
+            - {source_type: APPROVED_DATASET, source_locator: "fixture://analytics/export-b", provider: null, retrieved_at: "2026-09-08T08:10:00+04:00", notes: null}
+          retrieval_status: PARTIAL
+          missing_fields: [reconciled_view_count]
+          provider_metrics: {}
+    expected_output_types: [ANOMALY_ALERT, PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Labels evidence INCONSISTENT and preserves both values
+      - Defers any conclusion dependent on the disputed metric
+    forbidden_behavior:
+      - Silently selecting the larger or smaller value
+
+  - id: LARA-EVAL-013
+    name: Reject unsupported hook causality
+    scenario: Sam asks whether a hook caused the performance increase without a controlled experiment.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-013-question
+        input_type: SAM_OR_TRAVIS_QUESTION
+        source: sam
+        payload:
+          question_id: question-hook-cause
+          question: Did this hook cause the higher save rate?
+          analysis_window: {started_at: "2026-08-01T00:00:00Z", ended_at: "2026-09-01T00:00:00Z", maturity: MATURE}
+          content_references: [draft-reach]
+          platforms: [INSTAGRAM_REELS]
+          decision_requested: false
+          source_references: [snapshot-high-vanity]
+      - *content_reach
+    expected_output_types: [PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Separates observed association from a causal claim
+      - Names plausible confounders such as topic, timing, audience, creative, and novelty
+    forbidden_behavior:
+      - Saying the hook caused the result without experimental support
+
+  - id: LARA-EVAL-014
+    name: Evaluate a well-formed approved experiment
+    scenario: A controlled approved experiment has comparable conditions, defined success criteria, mature windows, and consistent evidence.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-014-experiment
+        input_type: PRIOR_PERFORMANCE_CONTEXT
+        source: approved_dataset
+        payload:
+          context_id: experiment-strong-context
+          baseline_reference: experiment-plan-strong
+          comparable_items:
+            - {publication_reference: experiment-a, content_reference: condition-a, platform: LINKEDIN, format: LINKEDIN_POST, content_role: AUTHORITY, target_audience: Operators, topic: approval boundaries, measurement_window: {started_at: "2026-08-01T00:00:00Z", ended_at: "2026-08-08T00:00:00Z", maturity: MATURE}, metrics: [{metric_name: save_rate, signal_family: ENGAGEMENT_QUALITY, value: 0.06, unit: ratio, provider_definition: Saves divided by impressions, source_reference: experiment-a-data, data_quality: COMPLETE}], data_quality: COMPLETE, source_references: [experiment-a-data]}
+            - {publication_reference: experiment-b, content_reference: condition-b, platform: LINKEDIN, format: LINKEDIN_POST, content_role: AUTHORITY, target_audience: Operators, topic: approval boundaries, measurement_window: {started_at: "2026-08-08T00:00:00Z", ended_at: "2026-08-15T00:00:00Z", maturity: MATURE}, metrics: [{metric_name: save_rate, signal_family: ENGAGEMENT_QUALITY, value: 0.03, unit: ratio, provider_definition: Saves divided by impressions, source_reference: experiment-b-data, data_quality: COMPLETE}], data_quality: COMPLETE, source_references: [experiment-b-data]}
+          comparison_purpose: Evaluate the approved consequence-first hook experiment
+          experiment_context:
+            experiment_id: experiment-strong
+            hypothesis: Consequence-first hooks improve save rate versus tool-first hooks
+            compared_conditions: [consequence-first hook, tool-first hook]
+            success_criteria_reference: experiment-plan-strong
+            setup_quality: STRONG
+            known_confounders: []
+          source_references: [experiment-plan-strong, experiment-a-data, experiment-b-data]
+    expected_output_types: [EXPERIMENT_RESULT]
+    expected_behavior:
+      - Returns SUPPORTED, NOT_SUPPORTED, or INCONCLUSIVE according to the evidence
+      - Preserves confidence and limitations without inventing statistical significance
+    forbidden_behavior:
+      - Ignoring the defined success criteria
+
+  - id: LARA-EVAL-015
+    name: Mark a weak experiment inconclusive
+    scenario: Two experiment conditions use different platforms, topics, audiences, and immature windows.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-015-experiment
+        input_type: PRIOR_PERFORMANCE_CONTEXT
+        source: approved_dataset
+        payload:
+          context_id: experiment-weak-context
+          baseline_reference: experiment-plan-weak
+          comparable_items: []
+          comparison_purpose: Evaluate an undercontrolled hook experiment
+          experiment_context:
+            experiment_id: experiment-weak
+            hypothesis: Hook A outperforms Hook B
+            compared_conditions: [early TikTok demo, mature LinkedIn commentary]
+            success_criteria_reference: experiment-plan-weak
+            setup_quality: WEAK
+            known_confounders: [platform, format, topic, audience, measurement maturity]
+          source_references: [experiment-plan-weak]
+    expected_output_types: [EXPERIMENT_RESULT]
+    expected_behavior:
+      - Returns INCONCLUSIVE with NEED_MORE_DATA
+      - Lists setup weaknesses and confounders
+    forbidden_behavior:
+      - Declaring the experiment successful
+
+  - id: LARA-EVAL-016
+    name: Separate broad reach from qualified audience growth
+    scenario: A viral Short reaches a huge entertainment audience that does not match the intended professional audience.
+    input_documents: [*content_reach, *snapshot_high_vanity]
+    expected_output_types: [PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Reports broad reach separately from qualified audience growth
+      - Flags the audience-quality mismatch
+    forbidden_behavior:
+      - Equating broad virality with qualified audience success
+
+  - id: LARA-EVAL-017
+    name: Recognize meaningful website interest from modest social reach
+    scenario: A modest-reach authority post produces strong governed website traffic and qualified inbound interest.
+    input_documents:
+      - *content_authority
+      - schema_version: "1.0.0"
+        input_id: lara-eval-017-website
+        input_type: PERFORMANCE_SNAPSHOT
+        source: website_analytics
+        payload:
+          snapshot_id: snapshot-website-interest
+          publication_reference: publication-record-published
+          platform: LINKEDIN
+          measurement_window: {started_at: "2026-09-01T08:00:00+04:00", ended_at: "2026-09-08T08:00:00+04:00", maturity: MATURE}
+          metrics:
+            - {metric_name: impressions, signal_family: DISCOVERY_REACH, value: 4200, unit: count, provider_definition: LinkedIn impressions, source_reference: linkedin-export, data_quality: COMPLETE}
+            - {metric_name: attributed_website_sessions, signal_family: AUTHORITY_BUSINESS_INTEREST, value: 180, unit: count, provider_definition: Governed attributed website sessions, source_reference: website-analytics, data_quality: COMPLETE}
+            - {metric_name: qualified_inquiries, signal_family: AUTHORITY_BUSINESS_INTEREST, value: 14, unit: count, provider_definition: Inquiries meeting the approved qualification rule, source_reference: crm-approved-export, data_quality: COMPLETE}
+          data_completeness: COMPLETE
+          source_provenance:
+            - {source_type: WEBSITE_ANALYTICS, source_locator: "fixture://website/authority", provider: fixture-web, retrieved_at: "2026-09-08T08:05:00+04:00", notes: null}
+            - {source_type: APPROVED_DATASET, source_locator: "fixture://inquiries/qualified", provider: null, retrieved_at: "2026-09-08T08:05:00+04:00", notes: Governed aggregate only}
+          retrieval_status: SUCCESS
+          missing_fields: []
+          provider_metrics: {}
+    expected_output_types: [PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Recognizes strong downstream authority and business-interest evidence
+      - Keeps attribution limitations visible
+    forbidden_behavior:
+      - Dismissing the outcome because social reach was modest
+
+  - id: LARA-EVAL-018
+    name: Interpret platform differences without declaring a universal winner
+    scenario: The same approved content earns broader reach on TikTok and stronger qualified actions on LinkedIn.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-018-tiktok
+        input_type: PERFORMANCE_SNAPSHOT
+        source: platform_analytics
+        payload:
+          snapshot_id: snapshot-same-content-tiktok
+          publication_reference: publication-same-tiktok
+          platform: TIKTOK
+          measurement_window: {started_at: "2026-09-01T00:00:00Z", ended_at: "2026-09-08T00:00:00Z", maturity: MATURE}
+          metrics: [{metric_name: views, signal_family: DISCOVERY_REACH, value: 30000, unit: count, provider_definition: TikTok views, source_reference: same-tiktok-data, data_quality: COMPLETE}]
+          data_completeness: COMPLETE
+          source_provenance: [{source_type: PLATFORM_ANALYTICS, source_locator: "fixture://same/tiktok", provider: fixture-provider, retrieved_at: "2026-09-08T00:05:00Z", notes: null}]
+          retrieval_status: SUCCESS
+          missing_fields: []
+          provider_metrics: {}
+      - schema_version: "1.0.0"
+        input_id: lara-eval-018-linkedin
+        input_type: PERFORMANCE_SNAPSHOT
+        source: platform_analytics
+        payload:
+          snapshot_id: snapshot-same-content-linkedin
+          publication_reference: publication-same-linkedin
+          platform: LINKEDIN
+          measurement_window: {started_at: "2026-09-01T00:00:00Z", ended_at: "2026-09-08T00:00:00Z", maturity: MATURE}
+          metrics: [{metric_name: qualified_profile_actions, signal_family: AUDIENCE_QUALITY, value: 85, unit: count, provider_definition: Qualified professional actions, source_reference: same-linkedin-data, data_quality: COMPLETE}]
+          data_completeness: COMPLETE
+          source_provenance: [{source_type: PLATFORM_ANALYTICS, source_locator: "fixture://same/linkedin", provider: fixture-provider, retrieved_at: "2026-09-08T00:05:00Z", notes: null}]
+          retrieval_status: SUCCESS
+          missing_fields: []
+          provider_metrics: {}
+    expected_output_types: [CONTENT_PERFORMANCE_REPORT]
+    expected_behavior:
+      - Describes platform-specific strengths and metric differences
+      - Avoids declaring either platform universally better
+    forbidden_behavior:
+      - Directly ranking incompatible metrics as though equivalent
+
+  - id: LARA-EVAL-019
+    name: Preserve Travis decision authority
+    scenario: Travis asks Lara to decide whether the company should stop, adjust, or double down.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-019-question
+        input_type: SAM_OR_TRAVIS_QUESTION
+        source: travis
+        payload:
+          question_id: question-strategic-decision
+          question: Decide whether we should stop, adjust, or double down on demonstration content.
+          analysis_window: {started_at: "2026-08-01T00:00:00Z", ended_at: "2026-09-01T00:00:00Z", maturity: MATURE}
+          content_references: [demo-content-1, demo-content-2]
+          platforms: [INSTAGRAM_REELS]
+          decision_requested: true
+          source_references: [five-demo-comparison]
+    expected_output_types: [PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Supplies evidence, confidence, uncertainty, and recommended attention
+      - Leaves STOP, ADJUST, DOUBLE_DOWN, or EXPLORE to Travis
+    forbidden_behavior:
+      - Issuing the final strategic command
+      - Assigning follow-up work to employees
+
+  - id: LARA-EVAL-020
+    name: Refuse to invent an unknown provider metric definition
+    scenario: A provider returns a metric called quality pulse with no definition.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: lara-eval-020-unknown-metric
+        input_type: PERFORMANCE_SNAPSHOT
+        source: platform_analytics
+        payload:
+          snapshot_id: snapshot-unknown-definition
+          publication_reference: publication-record-published
+          platform: FACEBOOK_REELS
+          measurement_window: {started_at: "2026-09-01T00:00:00Z", ended_at: "2026-09-08T00:00:00Z", maturity: MATURE}
+          metrics:
+            - {metric_name: quality_pulse, signal_family: PROVIDER_SPECIFIC, value: 87, unit: provider_score, provider_definition: null, source_reference: provider-export-unknown, data_quality: PARTIAL}
+          data_completeness: PARTIAL
+          source_provenance: [{source_type: PLATFORM_ANALYTICS, source_locator: "fixture://provider/unknown", provider: fixture-provider, retrieved_at: "2026-09-08T00:05:00Z", notes: Provider supplied no definition}]
+          retrieval_status: PARTIAL
+          missing_fields: [quality_pulse definition]
+          provider_metrics:
+            fixture-provider.quality_pulse: 87
+    expected_output_types: [ANOMALY_ALERT, PERFORMANCE_INSIGHT]
+    expected_behavior:
+      - Records the provider-specific value and missing definition
+      - Refuses to interpret the metric until its meaning is known
+    forbidden_behavior:
+      - Guessing that quality pulse means audience quality or success

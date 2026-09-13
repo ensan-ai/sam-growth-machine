@@ -1,0 +1,474 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/brain/schemas/output.schema.json",
+  "title": "Brain Output Contract",
+  "description": "Strict, extensible Phase 2D writing artifacts. No artifact is published or approved by this contract.",
+  "oneOf": [
+    {"$ref": "#/$defs/contentDraft"},
+    {"$ref": "#/$defs/claimNeedsVerification"},
+    {"$ref": "#/$defs/clarificationRequest"},
+    {"$ref": "#/$defs/strategicConcern"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assessment", "basis"],
+      "properties": {
+        "assessment": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Qualitative assessment; exact taxonomy remains unresolved."
+        },
+        "basis": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "voiceProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_profile",
+        "language_profile_reference",
+        "platform_profile_reference",
+        "format_profile_reference"
+      ],
+      "properties": {
+        "base_profile": {"const": "SAM_BASE_PHASE_2D"},
+        "language_profile_reference": {"type": ["string", "null"]},
+        "platform_profile_reference": {"type": ["string", "null"]},
+        "format_profile_reference": {"type": ["string", "null"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "evidenceUse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "classification", "source_reference", "language_preserved"],
+      "properties": {
+        "claim": {"type": "string", "minLength": 1},
+        "classification": {
+          "enum": ["SOURCE_BACKED_FACT", "INTERPRETATION", "SAM_OPINION"]
+        },
+        "source_reference": {"type": "string", "minLength": 1},
+        "language_preserved": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "claimVerificationItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "reason", "required_evidence", "safe_treatment"],
+      "properties": {
+        "claim": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "required_evidence": {"type": "string", "minLength": 1},
+        "safe_treatment": {"enum": ["OMIT", "QUALIFY", "BLOCK"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "qualityGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strategy_preserved",
+        "hook_accurate",
+        "takeaway_clear",
+        "evidence_preserved",
+        "limitations_visible",
+        "sounds_natural",
+        "no_unsupported_claims",
+        "platform_appropriate",
+        "cta_matches_objective",
+        "no_unnecessary_filler",
+        "meaningfully_distinct_when_required",
+        "realistic_for_sam_to_deliver",
+        "reasoning"
+      ],
+      "properties": {
+        "strategy_preserved": {"type": "boolean"},
+        "hook_accurate": {"type": "boolean"},
+        "takeaway_clear": {"type": "boolean"},
+        "evidence_preserved": {"type": "boolean"},
+        "limitations_visible": {"type": "boolean"},
+        "sounds_natural": {"type": "boolean"},
+        "no_unsupported_claims": {"type": "boolean"},
+        "platform_appropriate": {"type": "boolean"},
+        "cta_matches_objective": {"type": "boolean"},
+        "no_unnecessary_filler": {"type": "boolean"},
+        "meaningfully_distinct_when_required": {"type": "boolean"},
+        "realistic_for_sam_to_deliver": {"type": "boolean"},
+        "reasoning": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "shortVideoContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "spoken_script", "on_screen_text_suggestions", "caption", "alternate_hooks"],
+      "properties": {
+        "type": {"const": "SHORT_VIDEO"},
+        "spoken_script": {"type": "string", "minLength": 1},
+        "on_screen_text_suggestions": {"$ref": "#/$defs/stringArray"},
+        "caption": {"type": "string", "minLength": 1},
+        "alternate_hooks": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "linkedinContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "post_copy", "opening_alternatives"],
+      "properties": {
+        "type": {"const": "LINKEDIN_POST"},
+        "post_copy": {"type": "string", "minLength": 1},
+        "opening_alternatives": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "xPostContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "post_copy"],
+      "properties": {
+        "type": {"const": "X_POST"},
+        "post_copy": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "threadPost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "post_copy"],
+      "properties": {
+        "position": {"type": "integer", "minimum": 1},
+        "post_copy": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "xThreadContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "ordered_posts"],
+      "properties": {
+        "type": {"const": "X_THREAD"},
+        "ordered_posts": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/threadPost"},
+          "minItems": 2
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "facebookContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "post_copy"],
+      "properties": {
+        "type": {"const": "FACEBOOK_POST"},
+        "post_copy": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "otherContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "format_extension", "content"],
+      "properties": {
+        "type": {"const": "OTHER"},
+        "format_extension": {"type": "string", "minLength": 1},
+        "content": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "contentDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "draft_id",
+        "brief_id",
+        "format",
+        "platform",
+        "language",
+        "version",
+        "hook",
+        "body",
+        "cta",
+        "evidence_used",
+        "claims_requiring_verification",
+        "caveats",
+        "source_references",
+        "writing_notes",
+        "confidence",
+        "revision_reason",
+        "voice_profile",
+        "format_content",
+        "readiness",
+        "approval_status",
+        "quality_gate"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "CONTENT_DRAFT"},
+        "created_by": {"const": "brain"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "draft_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "format": {
+          "enum": ["SHORT_VIDEO", "LINKEDIN_POST", "X_POST", "X_THREAD", "FACEBOOK_POST", "OTHER"]
+        },
+        "platform": {
+          "enum": [
+            "Instagram Reels",
+            "TikTok",
+            "YouTube Shorts",
+            "Facebook Reels",
+            "LinkedIn",
+            "X",
+            "Facebook Feed"
+          ]
+        },
+        "language": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "hook": {"type": "string", "minLength": 1},
+        "body": {"type": "string", "minLength": 1},
+        "cta": {"type": "string", "minLength": 1},
+        "evidence_used": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/evidenceUse"},
+          "uniqueItems": true
+        },
+        "claims_requiring_verification": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/claimVerificationItem"},
+          "uniqueItems": true
+        },
+        "caveats": {"$ref": "#/$defs/stringArray"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "writing_notes": {"$ref": "#/$defs/stringArray"},
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "revision_reason": {"type": ["string", "null"]},
+        "voice_profile": {"$ref": "#/$defs/voiceProfile"},
+        "format_content": {
+          "oneOf": [
+            {"$ref": "#/$defs/shortVideoContent"},
+            {"$ref": "#/$defs/linkedinContent"},
+            {"$ref": "#/$defs/xPostContent"},
+            {"$ref": "#/$defs/xThreadContent"},
+            {"$ref": "#/$defs/facebookContent"},
+            {"$ref": "#/$defs/otherContent"}
+          ]
+        },
+        "readiness": {"enum": ["READY_FOR_SAM_REVIEW", "REVISION_REQUIRED"]},
+        "approval_status": {"const": "REQUIRES_SAM_APPROVAL"},
+        "quality_gate": {"$ref": "#/$defs/qualityGate"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"format": {"const": "SHORT_VIDEO"}}, "required": ["format"]},
+          "then": {
+            "properties": {
+              "format_content": {"$ref": "#/$defs/shortVideoContent"},
+              "platform": {"enum": ["Instagram Reels", "TikTok", "YouTube Shorts", "Facebook Reels"]}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"format": {"const": "LINKEDIN_POST"}}, "required": ["format"]},
+          "then": {
+            "properties": {
+              "format_content": {"$ref": "#/$defs/linkedinContent"},
+              "platform": {"const": "LinkedIn"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"format": {"const": "X_POST"}}, "required": ["format"]},
+          "then": {
+            "properties": {
+              "format_content": {"$ref": "#/$defs/xPostContent"},
+              "platform": {"const": "X"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"format": {"const": "X_THREAD"}}, "required": ["format"]},
+          "then": {
+            "properties": {
+              "format_content": {"$ref": "#/$defs/xThreadContent"},
+              "platform": {"const": "X"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"format": {"const": "FACEBOOK_POST"}}, "required": ["format"]},
+          "then": {
+            "properties": {
+              "format_content": {"$ref": "#/$defs/facebookContent"},
+              "platform": {"const": "Facebook Feed"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"format": {"const": "OTHER"}}, "required": ["format"]},
+          "then": {"properties": {"format_content": {"$ref": "#/$defs/otherContent"}}}
+        },
+        {
+          "if": {"properties": {"readiness": {"const": "READY_FOR_SAM_REVIEW"}}, "required": ["readiness"]},
+          "then": {
+            "properties": {
+              "claims_requiring_verification": {"maxItems": 0},
+              "quality_gate": {
+                "properties": {
+                  "strategy_preserved": {"const": true},
+                  "hook_accurate": {"const": true},
+                  "takeaway_clear": {"const": true},
+                  "evidence_preserved": {"const": true},
+                  "limitations_visible": {"const": true},
+                  "sounds_natural": {"const": true},
+                  "no_unsupported_claims": {"const": true},
+                  "platform_appropriate": {"const": true},
+                  "cta_matches_objective": {"const": true},
+                  "no_unnecessary_filler": {"const": true},
+                  "meaningfully_distinct_when_required": {"const": true},
+                  "realistic_for_sam_to_deliver": {"const": true}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "claimNeedsVerification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "request_id",
+        "brief_id",
+        "draft_id",
+        "destination",
+        "claim",
+        "reason",
+        "required_evidence",
+        "available_source_references",
+        "safe_treatment",
+        "blocks_ready_draft"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "CLAIM_NEEDS_VERIFICATION"},
+        "created_by": {"const": "brain"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "request_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "draft_id": {"type": ["string", "null"]},
+        "destination": {"const": "adam"},
+        "claim": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "required_evidence": {"type": "string", "minLength": 1},
+        "available_source_references": {"$ref": "#/$defs/stringArray"},
+        "safe_treatment": {"enum": ["OMIT", "QUALIFY", "BLOCK"]},
+        "blocks_ready_draft": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "clarificationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "request_id",
+        "brief_id",
+        "destination",
+        "reason_type",
+        "issue",
+        "questions",
+        "conflicting_references",
+        "blocks_drafting"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "CLARIFICATION_REQUEST"},
+        "created_by": {"const": "brain"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "request_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "destination": {"enum": ["adam", "sam"]},
+        "reason_type": {
+          "enum": ["UNCLEAR_BRIEF", "MISSING_INFORMATION", "CONTRADICTORY_SOURCES", "UNCLEAR_SAM_FEEDBACK"]
+        },
+        "issue": {"type": "string", "minLength": 1},
+        "questions": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "conflicting_references": {"$ref": "#/$defs/stringArray"},
+        "blocks_drafting": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "strategicConcern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "concern_id",
+        "brief_id",
+        "destination",
+        "concern_type",
+        "approved_strategy",
+        "conflicting_request",
+        "reasoning",
+        "recommended_resolution",
+        "blocks_drafting"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "STRATEGIC_CONCERN"},
+        "created_by": {"const": "brain"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "concern_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "destination": {"const": "adam"},
+        "concern_type": {
+          "enum": ["STRATEGY_CHANGE_REQUESTED", "STRATEGIC_CONFLICT", "POSITIONING_CONFLICT", "EVIDENCE_REQUIREMENT_CONFLICT"]
+        },
+        "approved_strategy": {"type": "string", "minLength": 1},
+        "conflicting_request": {"type": "string", "minLength": 1},
+        "reasoning": {"type": "string", "minLength": 1},
+        "recommended_resolution": {"type": "string", "minLength": 1},
+        "blocks_drafting": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    }
+  }
+}

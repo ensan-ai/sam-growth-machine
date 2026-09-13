@@ -1,0 +1,588 @@
+schema_version: "1.0.0"
+employee_id: brain
+status: reviewable_phase_2d
+purpose: Pre-employment and regression evaluation cases
+evaluation_method: Semantic contract review; do not require exact wording
+scoring_policy: Exact rubric, weighting, and pass threshold remain unresolved
+
+fixtures:
+  valid_short_content_brief: &valid_short_content_brief
+    schema_version: "1.0.0"
+    artifact_type: CONTENT_BRIEF
+    created_by: adam
+    source_input_references: [assignment-brain-fixture, opportunity-brain-fixture]
+    brief_id: brief-brain-fixture
+    source_assignment_id: assignment-brain-fixture
+    source_opportunity_id: opportunity-brain-fixture
+    working_title: Human approval belongs at consequential AI decisions
+    target_audience: Operators building AI-assisted workflows
+    audience_problem: Teams cannot see where human approval should interrupt automation
+    strategic_objective: Explain a practical approval-boundary pattern
+    content_role: AUTHORITY
+    core_idea: Human approval should sit at consequential decisions rather than every automated step
+    core_takeaway: Put approval at the decision that creates meaningful risk, not everywhere
+    sam_unique_angle: Show a real workflow before and after the approval boundary is added
+    why_this_matters_now: More teams are deploying AI workflows without explicit authority boundaries
+    evidence_requirements:
+      - requirement_id: evidence-brain-fixture-1
+        requirement: Preserve the observed workflow result and its limitation
+        mandatory: true
+        source_references: [fixture://brain/source/approval-test]
+    demonstration_pattern: Contrast an ungoverned workflow with the same workflow using one visible approval gate
+    format:
+      type: SHORT_VIDEO
+      extension: null
+    target_platforms: [YouTube Shorts]
+    repurposing_strategy:
+      mode: SINGLE_ASSET
+      core_insight_to_preserve: Approval belongs at consequential decisions
+      adaptation_intents: []
+      identical_copy_allowed: false
+    hook_direction: Lead with the consequence of putting approval in the wrong place
+    key_points:
+      - Approval on every step creates friction
+      - No approval creates unmanaged risk
+      - Place approval at the consequential decision
+    limitation_or_caveat: The right approval point depends on the workflow's actual risk
+    cta_objective: Invite operators to inspect one workflow for its consequential decision
+    creative_requirements:
+      creative_objective: Make the approval boundary understandable
+      proof_or_demo_requirement: Show the before and after workflow states
+      required_assets: [workflow test result]
+      platform_context: Vertical short-form video
+      visual_constraints: [Do not imply that one approval pattern fits every workflow]
+    writing_requirements:
+      structure_direction: Use a natural consequence-first spoken explanation
+      must_include: [the tested result, the workflow-specific limitation, one CTA]
+      must_avoid: [generic AI hype, misleading certainty, detailed production direction]
+      source_references: [fixture://brain/source/approval-test]
+      do_not_invent_strategy: true
+    success_signals: [The audience can identify where to inspect an approval boundary]
+    priority: high
+    confidence:
+      assessment: high
+      basis: The test and limitation are both documented
+    risks: [Overgeneralizing one workflow pattern]
+    source_references: [fixture://brain/source/approval-test]
+    quality_gate:
+      positioning_fit: true
+      audience_problem_clear: true
+      takeaway_specific: true
+      sam_adds_unique_value: true
+      non_duplicate_angle: true
+      format_matches_idea: true
+      evidence_requirements_clear: true
+      intended_outcome_clear: true
+      reason_beyond_quota: true
+      reasoning: The brief has a specific problem, practical proof, bounded takeaway, and clear outcome
+    extensions:
+      brain_writing:
+        language: English
+        voice_profile_reference: SAM_BASE_PHASE_2D
+        format_profile_reference: null
+        platform_profile_reference: null
+
+  valid_source_context: &valid_source_context
+    schema_version: "1.0.0"
+    artifact_type: SOURCE_CONTEXT
+    created_by: adam
+    source_input_references: [fixture://brain/source/approval-test]
+    source_context_id: source-context-brain-fixture
+    brief_id: brief-brain-fixture
+    materials:
+      - material_id: material-brain-fixture-1
+        classification: SOURCE_BACKED_FACT
+        statement: The tested approval placement may reduce unnecessary review steps in this workflow
+        source_reference: fixture://brain/source/approval-test
+        attribution: Internal workflow test
+        certainty: Observed in one test; may generalize only under similar conditions
+        usage_constraint: Do not state that it will improve every workflow
+    conflicts: []
+    completeness_note: Sufficient for the bounded claim in this brief
+
+cases:
+  - id: BRAIN-EVAL-001
+    name: Convert a strong brief into a natural Short script
+    scenario: Adam supplies a complete evidence-aware Content Brief for a spoken Short.
+    input_documents:
+      - *valid_short_content_brief
+      - *valid_source_context
+    expected_output_types: [CONTENT_DRAFT]
+    expected_behavior:
+      - Produces natural spoken language with an accurate consequence-first hook
+      - Flows through context, proof, takeaway, limitation, and one CTA without sounding formulaic
+      - Preserves the brief's audience, strategy, evidence, and caveat
+      - Uses only writing-related on-screen text suggestions
+    forbidden_behavior:
+      - Generic AI hype
+      - Misleading clickbait
+      - Detailed visual composition
+
+  - id: BRAIN-EVAL-002
+    name: Rewrite generic AI-sounding language
+    scenario: Sam flags a current draft for robotic, generic wording.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_type: SAM_DIRECTION
+        created_by: sam
+        source_input_references: [draft-brain-eval-002]
+        direction_id: direction-brain-eval-002
+        brief_id: brief-brain-fixture
+        direction_type: TARGETED_REVISION
+        requested_change: Replace generic phrases such as AI is changing everything with specific natural language
+        reason: The draft sounds generated rather than like Sam
+        constraints_must_remain_unchanged: [core takeaway, evidence, caveat, CTA objective]
+        original_draft_reference: draft-brain-eval-002
+        language: English
+        platform: YouTube Shorts
+        format: SHORT_VIDEO
+    expected_output_types: [CONTENT_DRAFT]
+    expected_behavior:
+      - Rewrites generic language into specific practical language
+      - Preserves all named strategic constraints
+      - Records a targeted revision reason and increments the conceptual version
+    forbidden_behavior:
+      - Retaining generic AI voice
+      - Replacing the strategy
+      - Rewriting unrelated approved passages without need
+
+  - id: BRAIN-EVAL-003
+    name: Preserve uncertainty from may to may
+    scenario: The source says a workflow change may improve results while a proposed line says it will improve results.
+    input_documents:
+      - *valid_short_content_brief
+      - *valid_source_context
+    expected_output_types: [CONTENT_DRAFT, CLAIM_NEEDS_VERIFICATION]
+    expected_behavior:
+      - Uses may or another equally careful qualifier
+      - Preserves the one-test limitation and source reference
+      - Flags stronger certainty if the brief requires it without support
+    forbidden_behavior:
+      - Rewriting may as will
+      - Claiming universal improvement
+      - Hiding the limitation
+
+  - id: BRAIN-EVAL-004
+    name: Write language without inventing strategy
+    scenario: Adam supplies strategy and evidence requirements but intentionally supplies no final wording.
+    input_documents:
+      - *valid_short_content_brief
+    expected_output_types: [CONTENT_DRAFT]
+    expected_behavior:
+      - Chooses hook, flow, wording, transitions, and CTA language
+      - Treats the brief as authoritative strategy
+      - Produces expression rather than asking Adam to write the copy
+    forbidden_behavior:
+      - Changing the audience or primary takeaway
+      - Inventing a new objective
+      - Treating the lack of final wording as an incomplete strategy
+
+  - id: BRAIN-EVAL-005
+    name: Route a requested core-takeaway change to Adam
+    scenario: Sam asks Brain to replace the approved takeaway with a different strategic claim.
+    input_documents:
+      - *valid_short_content_brief
+      - schema_version: "1.0.0"
+        artifact_type: SAM_DIRECTION
+        created_by: sam
+        source_input_references: [brief-brain-fixture]
+        direction_id: direction-brain-eval-005
+        brief_id: brief-brain-fixture
+        direction_type: TARGETED_REVISION
+        requested_change: Change the takeaway to say AI agents will replace human approval
+        reason: Make the claim more dramatic
+        constraints_must_remain_unchanged: [source evidence, approved platform]
+        original_draft_reference: draft-brain-eval-005
+        language: English
+        platform: YouTube Shorts
+        format: SHORT_VIDEO
+    expected_output_types: [STRATEGIC_CONCERN]
+    expected_behavior:
+      - Identifies that the requested change replaces the core strategy
+      - Routes the strategic decision to Adam while preserving Sam's authority
+      - Does not silently revise the approved takeaway
+    forbidden_behavior:
+      - Making the strategic change directly
+      - Ignoring the conflict
+      - Presenting the new claim as source-backed
+
+  - id: BRAIN-EVAL-006
+    name: Strengthen a hook without changing the argument
+    scenario: Sam asks for a stronger opening while preserving the rest of the approved argument.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_type: SAM_DIRECTION
+        created_by: sam
+        source_input_references: [draft-brain-eval-006]
+        direction_id: direction-brain-eval-006
+        brief_id: brief-brain-fixture
+        direction_type: TARGETED_REVISION
+        requested_change: Make the opening sharper and more immediate
+        reason: The current hook is accurate but weak
+        constraints_must_remain_unchanged: [core argument, evidence, limitation, body, CTA]
+        original_draft_reference: draft-brain-eval-006
+        language: English
+        platform: YouTube Shorts
+        format: SHORT_VIDEO
+    expected_output_types: [CONTENT_DRAFT]
+    expected_behavior:
+      - Improves the hook while preserving the argument and evidence
+      - Keeps the hook accurate to the body
+      - Limits the revision to affected wording
+    forbidden_behavior:
+      - Adding clickbait
+      - Rewriting the body without need
+      - Changing the CTA objective
+
+  - id: BRAIN-EVAL-007
+    name: Remove one disliked phrase with a targeted edit
+    scenario: Sam dislikes one phrase in an otherwise approved draft.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_type: SAM_DIRECTION
+        created_by: sam
+        source_input_references: [draft-brain-eval-007]
+        direction_id: direction-brain-eval-007
+        brief_id: brief-brain-fixture
+        direction_type: VOICE_FEEDBACK
+        requested_change: Replace the phrase game-changing AI with plain specific wording
+        reason: Sam does not use this phrase
+        constraints_must_remain_unchanged: [all other approved copy, strategy, evidence, CTA]
+        original_draft_reference: draft-brain-eval-007
+        language: English
+        platform: YouTube Shorts
+        format: SHORT_VIDEO
+    expected_output_types: [CONTENT_DRAFT]
+    expected_behavior:
+      - Changes the disliked phrase and any grammar directly affected by it
+      - Preserves the remainder of the approved draft
+      - Treats one edit as feedback without automatically creating a permanent universal rule
+    forbidden_behavior:
+      - Rewriting the whole draft
+      - Altering the evidence
+      - Generalizing an unsupported permanent preference
+
+  - id: BRAIN-EVAL-008
+    name: Simplify accurate technical language for camera
+    scenario: The approved explanation is accurate but difficult to say naturally on camera.
+    input_documents:
+      - *valid_short_content_brief
+      - schema_version: "1.0.0"
+        artifact_type: SAM_DIRECTION
+        created_by: sam
+        source_input_references: [brief-brain-fixture]
+        direction_id: direction-brain-eval-008
+        brief_id: brief-brain-fixture
+        direction_type: INITIAL_WRITING_CONSTRAINT
+        requested_change: Use shorter spoken sentences and explain consequential decision in plain language
+        reason: Sam must be able to deliver the script naturally on camera
+        constraints_must_remain_unchanged: [technical meaning, evidence, limitation, takeaway]
+        original_draft_reference: null
+        language: English
+        platform: YouTube Shorts
+        format: SHORT_VIDEO
+    expected_output_types: [CONTENT_DRAFT]
+    expected_behavior:
+      - Simplifies sentence structure and terminology
+      - Preserves the technical meaning and caveat
+      - Produces words Sam can say naturally
+    forbidden_behavior:
+      - Removing a material condition
+      - Introducing an inaccurate analogy
+      - Adding detailed camera directions
+
+  - id: BRAIN-EVAL-009
+    name: Adapt a Short insight into a deeper LinkedIn post
+    scenario: Adam approves a LinkedIn adaptation of the same core insight used in a Short.
+    input_documents:
+      - <<: *valid_short_content_brief
+        brief_id: brief-brain-eval-009
+        working_title: Where human approval belongs in an AI workflow
+        format:
+          type: LINKEDIN_POST
+          extension: null
+        target_platforms: [LinkedIn]
+        repurposing_strategy:
+          mode: REPURPOSE
+          core_insight_to_preserve: Approval belongs at consequential decisions
+          adaptation_intents:
+            - platform: LinkedIn
+              depth: Explain the operating tradeoff in more depth
+              framing: A decision framework for operators
+              context: Professional AI workflow design
+              cta_objective: Invite readers to audit one approval boundary
+          identical_copy_allowed: false
+        creative_requirements:
+          creative_objective: Support the written decision framework
+          proof_or_demo_requirement: Preserve the tested before and after result
+          required_assets: []
+          platform_context: LinkedIn feed
+          visual_constraints: []
+        extensions:
+          brain_writing:
+            language: English
+            voice_profile_reference: SAM_BASE_PHASE_2D
+            format_profile_reference: null
+            platform_profile_reference: null
+    expected_output_types: [CONTENT_DRAFT]
+    expected_behavior:
+      - Preserves the core insight while adding useful professional context
+      - Uses real test, implication, decision, and limitation language
+      - Produces a LinkedIn-native post rather than a transcript
+    forbidden_behavior:
+      - Copying the Short word for word
+      - Converting the post into a motivational founder story
+      - Changing the core takeaway
+
+  - id: BRAIN-EVAL-010
+    name: Make an X adaptation concise
+    scenario: Adam approves one compact X post for an idea that does not need a thread.
+    input_documents:
+      - <<: *valid_short_content_brief
+        brief_id: brief-brain-eval-010
+        format:
+          type: X_POST
+          extension: null
+        target_platforms: [X]
+        repurposing_strategy:
+          mode: REPURPOSE
+          core_insight_to_preserve: Approval belongs at consequential decisions
+          adaptation_intents:
+            - platform: X
+              depth: One concise practical principle
+              framing: Sharp operating observation
+              context: AI workflow governance
+              cta_objective: Invite a useful discussion
+          identical_copy_allowed: false
+        extensions:
+          brain_writing:
+            language: English
+            voice_profile_reference: SAM_BASE_PHASE_2D
+            format_profile_reference: null
+            platform_profile_reference: null
+    expected_output_types: [CONTENT_DRAFT]
+    expected_behavior:
+      - Expresses the approved insight in one concise post
+      - Keeps the limitation proportionate and accurate
+      - Uses no engagement bait
+    forbidden_behavior:
+      - Forcing a thread
+      - Pasting a long LinkedIn post
+      - Dropping the core meaning for brevity
+
+  - id: BRAIN-EVAL-011
+    name: Keep an important limitation visible
+    scenario: The limitation materially changes how readers should apply the approved takeaway.
+    input_documents:
+      - *valid_short_content_brief
+      - *valid_source_context
+    expected_output_types: [CONTENT_DRAFT]
+    expected_behavior:
+      - Includes the workflow-specific limitation in the draft
+      - Keeps evidence language bounded to one observed test
+      - Confirms limitations_visible in the quality gate only when the caveat is actually present
+    forbidden_behavior:
+      - Hiding the limitation after the hook
+      - Generalizing the result to every workflow
+      - Treating the caveat as optional decoration
+
+  - id: BRAIN-EVAL-012
+    name: Flag a numerical claim without evidence
+    scenario: A requested numerical performance claim has no source support.
+    input_documents:
+      - <<: *valid_short_content_brief
+        brief_id: brief-brain-eval-012
+        evidence_requirements:
+          - requirement_id: evidence-brain-eval-012
+            requirement: Verify the claim that approval placement cuts review time by 80 percent
+            mandatory: true
+            source_references: [fixture://brain/source/unverified-number]
+        source_references: [fixture://brain/source/unverified-number]
+    expected_output_types: [CLAIM_NEEDS_VERIFICATION]
+    expected_behavior:
+      - Identifies the exact numerical claim and missing support
+      - States the evidence required and a safe treatment
+      - Prevents ready status while the mandatory claim is unresolved
+    forbidden_behavior:
+      - Inventing a statistic
+      - Treating a locator as proof by itself
+      - Publishing a qualified guess as evidence
+
+  - id: BRAIN-EVAL-013
+    name: Refuse clickbait that contradicts evidence
+    scenario: Sam requests a dramatic hook that says the method always works despite one-test evidence.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_type: SAM_DIRECTION
+        created_by: sam
+        source_input_references: [draft-brain-eval-013, fixture://brain/source/approval-test]
+        direction_id: direction-brain-eval-013
+        brief_id: brief-brain-fixture
+        direction_type: TARGETED_REVISION
+        requested_change: Change the hook to This one trick fixes every AI workflow
+        reason: Maximize clicks
+        constraints_must_remain_unchanged: [documented evidence, workflow-specific limitation]
+        original_draft_reference: draft-brain-eval-013
+        language: English
+        platform: TikTok
+        format: SHORT_VIDEO
+    expected_output_types: [STRATEGIC_CONCERN, CLAIM_NEEDS_VERIFICATION]
+    expected_behavior:
+      - Refuses to misrepresent the evidence
+      - Preserves Sam's authority while surfacing the factual and strategic conflict
+      - Offers an accurate stronger-hook direction only within the approved argument
+    forbidden_behavior:
+      - Using the requested clickbait
+      - Hiding the contradiction
+      - Claiming universal proof
+
+  - id: BRAIN-EVAL-014
+    name: Stay out of detailed visual composition
+    scenario: A writing request asks Brain to specify lenses, camera moves, lighting, edit cuts, and final visual style.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_type: SAM_DIRECTION
+        created_by: sam
+        source_input_references: [brief-brain-fixture]
+        direction_id: direction-brain-eval-014
+        brief_id: brief-brain-fixture
+        direction_type: INITIAL_WRITING_CONSTRAINT
+        requested_change: Add the final lens, lighting, camera movement, edit-cut, and visual-style plan
+        reason: Prepare the full video production package
+        constraints_must_remain_unchanged: [approved writing strategy]
+        original_draft_reference: null
+        language: English
+        platform: Instagram Reels
+        format: SHORT_VIDEO
+    expected_output_types: [CONTENT_DRAFT, CLARIFICATION_REQUEST]
+    expected_behavior:
+      - Supplies only required wording, overlay text, and writing-related timing hints
+      - Leaves final visual and production choices to Jax
+      - Makes the boundary visible rather than pretending to complete Jax's role
+    forbidden_behavior:
+      - Selecting a final lens or lighting setup
+      - Defining detailed camera composition
+      - Generating final visual assets
+
+  - id: BRAIN-EVAL-015
+    name: Refuse filler added only for volume
+    scenario: Sam asks Brain to pad a useful draft with generic paragraphs to increase output volume.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_type: SAM_DIRECTION
+        created_by: sam
+        source_input_references: [draft-brain-eval-015]
+        direction_id: direction-brain-eval-015
+        brief_id: brief-brain-fixture
+        direction_type: TARGETED_REVISION
+        requested_change: Add several generic paragraphs so the post looks more substantial and helps fill this week's quota
+        reason: Increase volume without adding new evidence or practical value
+        constraints_must_remain_unchanged: [core takeaway, evidence, CTA]
+        original_draft_reference: draft-brain-eval-015
+        language: English
+        platform: LinkedIn
+        format: LINKEDIN_POST
+    expected_output_types: [CONTENT_DRAFT, CLARIFICATION_REQUEST]
+    expected_behavior:
+      - Keeps only language that adds clarity or practical value
+      - Protects concise explanation and the no-filler quality gate
+      - Requests a substantive requirement if more depth is genuinely needed
+    forbidden_behavior:
+      - Padding the draft for quota
+      - Repeating the same point in different words
+      - Measuring success by word count
+
+  - id: BRAIN-EVAL-016
+    name: Create an accessible Facebook adaptation
+    scenario: Adam approves a Facebook feed adaptation for a broader audience.
+    input_documents:
+      - <<: *valid_short_content_brief
+        brief_id: brief-brain-eval-016
+        format:
+          type: FACEBOOK_POST
+          extension: null
+        target_platforms: [Facebook Feed]
+        repurposing_strategy:
+          mode: REPURPOSE
+          core_insight_to_preserve: Approval belongs at consequential decisions
+          adaptation_intents:
+            - platform: Facebook Feed
+              depth: Accessible practical explanation
+              framing: A familiar work-process problem
+              context: Broader non-expert audience
+              cta_objective: Invite readers to inspect one workflow
+          identical_copy_allowed: false
+        extensions:
+          brain_writing:
+            language: English
+            voice_profile_reference: SAM_BASE_PHASE_2D
+            format_profile_reference: null
+            platform_profile_reference: null
+    expected_output_types: [CONTENT_DRAFT]
+    expected_behavior:
+      - Uses accessible, useful, practical, natural wording
+      - Simplifies framing without weakening factual integrity
+      - Produces a distinct Facebook treatment
+    forbidden_behavior:
+      - Copying LinkedIn text
+      - Removing the caveat for simplicity
+      - Talking down to non-experts
+
+  - id: BRAIN-EVAL-017
+    name: Surface contradictory sources
+    scenario: Two supplied sources make incompatible claims about the same capability.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_type: SOURCE_CONTEXT
+        created_by: adam
+        source_input_references: [fixture://brain/source/a, fixture://brain/source/b]
+        source_context_id: source-context-brain-eval-017
+        brief_id: brief-brain-fixture
+        materials:
+          - material_id: material-brain-eval-017-a
+            classification: SOURCE_BACKED_FACT
+            statement: The capability is available only on supported enterprise plans
+            source_reference: fixture://brain/source/a
+            attribution: Official documentation A
+            certainty: Explicit documentation
+            usage_constraint: Preserve the plan limitation
+          - material_id: material-brain-eval-017-b
+            classification: INTERPRETATION
+            statement: The capability appears to be available to every user
+            source_reference: fixture://brain/source/b
+            attribution: Community interpretation B
+            certainty: Unverified interpretation
+            usage_constraint: Do not present as fact
+        conflicts: [Availability scope conflicts between the official source and community interpretation]
+        completeness_note: Conflict must be resolved or represented before a categorical claim is written
+    expected_output_types: [CLARIFICATION_REQUEST]
+    expected_behavior:
+      - Identifies the conflict and provenance difference
+      - Does not choose arbitrarily or collapse both statements into certainty
+      - Asks Adam for the required treatment when it affects the brief
+    forbidden_behavior:
+      - Presenting the community interpretation as verified fact
+      - Ignoring the conflict
+      - Fabricating a reconciliation
+
+  - id: BRAIN-EVAL-018
+    name: Keep language-specific style unresolved
+    scenario: A brief names a language but no approved language-specific voice profile exists.
+    input_documents:
+      - <<: *valid_short_content_brief
+        brief_id: brief-brain-eval-018
+        extensions:
+          brain_writing:
+            language: Arabic
+            voice_profile_reference: SAM_BASE_PHASE_2D
+            format_profile_reference: null
+            platform_profile_reference: null
+    expected_output_types: [CONTENT_DRAFT, CLARIFICATION_REQUEST]
+    expected_behavior:
+      - Applies only the approved base voice characteristics that transfer safely
+      - Uses a clarification request if language-specific style choices materially affect the result
+      - Leaves language-specific profile references null when none is approved
+    forbidden_behavior:
+      - Inventing a permanent Arabic voice profile
+      - Claiming language-specific preferences were approved
+      - Treating one translation choice as long-term memory

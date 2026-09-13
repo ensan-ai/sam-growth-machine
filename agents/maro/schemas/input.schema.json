@@ -1,0 +1,366 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/maro/schemas/input.schema.json",
+  "title": "Maro Input Contract",
+  "description": "Strict Phase 2F distribution inputs. These artifacts specify conceptual behavior and do not implement publication.",
+  "oneOf": [
+    {"$ref": "#/$defs/publishPackage"},
+    {"$ref": "#/$defs/platformPublicationUpdate"},
+    {"$ref": "#/$defs/distributionControl"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "platformId": {
+      "enum": ["INSTAGRAM_REELS", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK_REELS", "LINKEDIN", "X", "FACEBOOK_FEED", "OTHER"]
+    },
+    "platformIdArray": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/platformId"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "approvalReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approval_id",
+        "approved_by",
+        "decision",
+        "approved_at",
+        "approval_version",
+        "approved_content_version",
+        "approved_creative_version",
+        "approved_platforms",
+        "approval_scope_id",
+        "validity_status"
+      ],
+      "properties": {
+        "approval_id": {"type": "string", "minLength": 1},
+        "approved_by": {"const": "sam"},
+        "decision": {"const": "APPROVE"},
+        "approved_at": {"type": "string", "format": "date-time"},
+        "approval_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "approved_content_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "approved_creative_version": {"type": ["string", "null"]},
+        "approved_platforms": {"$ref": "#/$defs/platformIdArray"},
+        "approval_scope_id": {"type": "string", "minLength": 1},
+        "validity_status": {"enum": ["VALID", "REVOKED", "EXPIRED"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "versionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content_matches_approval", "creative_matches_approval", "scope_matches_approval", "reasoning"],
+      "properties": {
+        "content_matches_approval": {"type": "boolean"},
+        "creative_matches_approval": {"type": "boolean"},
+        "scope_matches_approval": {"type": "boolean"},
+        "reasoning": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "schedulingIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "timezone", "scheduled_at", "window_start", "window_end", "optimization_policy_reference"],
+      "properties": {
+        "mode": {"enum": ["PUBLISH_NOW", "EXACT_TIME", "APPROVED_WINDOW", "OPTIMIZED_POLICY"]},
+        "timezone": {"type": "string", "minLength": 1},
+        "scheduled_at": {"type": ["string", "null"], "format": "date-time"},
+        "window_start": {"type": ["string", "null"], "format": "date-time"},
+        "window_end": {"type": ["string", "null"], "format": "date-time"},
+        "optimization_policy_reference": {"type": ["string", "null"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"const": "EXACT_TIME"}}, "required": ["mode"]},
+          "then": {"properties": {"scheduled_at": {"type": "string", "format": "date-time"}}}
+        },
+        {
+          "if": {"properties": {"mode": {"const": "APPROVED_WINDOW"}}, "required": ["mode"]},
+          "then": {"properties": {"window_start": {"type": "string", "format": "date-time"}, "window_end": {"type": "string", "format": "date-time"}}}
+        },
+        {
+          "if": {"properties": {"mode": {"const": "OPTIMIZED_POLICY"}}, "required": ["mode"]},
+          "then": {"properties": {"optimization_policy_reference": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    },
+    "platformMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caption", "title", "description", "hashtags", "cta_formatting", "tagging_metadata", "upload_settings", "metadata_complete"],
+      "properties": {
+        "caption": {"type": ["string", "null"]},
+        "title": {"type": ["string", "null"]},
+        "description": {"type": ["string", "null"]},
+        "hashtags": {"$ref": "#/$defs/stringArray"},
+        "cta_formatting": {"type": ["string", "null"]},
+        "tagging_metadata": {"$ref": "#/$defs/stringArray"},
+        "upload_settings": {"$ref": "#/$defs/extensions"},
+        "metadata_complete": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "publicationIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publish_package_id", "platform", "content_version", "creative_version", "idempotency_key"],
+      "properties": {
+        "publish_package_id": {"type": "string", "minLength": 1},
+        "platform": {"$ref": "#/$defs/platformId"},
+        "content_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "creative_version": {"type": ["string", "null"]},
+        "idempotency_key": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "platformTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "platform_extension",
+        "approved_for_platform",
+        "publication_identity",
+        "required_asset_references",
+        "platform_metadata",
+        "scheduling_intent"
+      ],
+      "properties": {
+        "platform": {"$ref": "#/$defs/platformId"},
+        "platform_extension": {"type": ["string", "null"]},
+        "approved_for_platform": {"type": "boolean"},
+        "publication_identity": {"$ref": "#/$defs/publicationIdentity"},
+        "required_asset_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "platform_metadata": {"$ref": "#/$defs/platformMetadata"},
+        "scheduling_intent": {"$ref": "#/$defs/schedulingIntent"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"platform": {"const": "OTHER"}}, "required": ["platform"]},
+          "then": {"properties": {"platform_extension": {"type": "string", "minLength": 1}}},
+          "else": {"properties": {"platform_extension": {"type": "null"}}}
+        }
+      ]
+    },
+    "upstreamArtifactBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "artifact_id", "schema_id", "artifact_version", "binding_role"],
+      "properties": {
+        "artifact_type": {"enum": ["CONTENT_BRIEF", "CONTENT_DRAFT", "CREATIVE_PACKAGE"]},
+        "artifact_id": {"type": "string", "minLength": 1},
+        "schema_id": {"type": "string", "format": "uri"},
+        "artifact_version": {"type": ["string", "null"]},
+        "binding_role": {"enum": ["STRATEGY", "CONTENT", "CREATIVE"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "publishPackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "publish_package_id",
+        "package_state",
+        "content_brief_id",
+        "content_draft_id",
+        "creative_package_id",
+        "authoritative_artifact_bindings",
+        "approval_reference",
+        "content_type",
+        "master_asset_reference",
+        "platform_targets",
+        "content_version",
+        "creative_version",
+        "approval_version",
+        "version_binding",
+        "source_references",
+        "special_constraints",
+        "approval_sensitive_constraints",
+        "cancelled",
+        "cancellation_reference",
+        "blocking_upstream_issues"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "PUBLISH_PACKAGE"},
+        "created_by": {"enum": ["sam", "travis", "system"]},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "publish_package_id": {"type": "string", "minLength": 1},
+        "package_state": {"enum": ["DRAFT_PACKAGE", "AWAITING_APPROVAL", "APPROVED", "BLOCKED", "CANCELLED"]},
+        "content_brief_id": {"type": "string", "minLength": 1},
+        "content_draft_id": {"type": "string", "minLength": 1},
+        "creative_package_id": {"type": ["string", "null"]},
+        "authoritative_artifact_bindings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/upstreamArtifactBinding"},
+          "minItems": 2,
+          "contains": {"properties": {"artifact_type": {"const": "CONTENT_BRIEF"}}, "required": ["artifact_type"]},
+          "allOf": [
+            {"contains": {"properties": {"artifact_type": {"const": "CONTENT_DRAFT"}}, "required": ["artifact_type"]}}
+          ]
+        },
+        "approval_reference": {"oneOf": [{"$ref": "#/$defs/approvalReference"}, {"type": "null"}]},
+        "content_type": {"enum": ["SHORT_VIDEO", "LINKEDIN_POST", "X_POST", "X_THREAD", "FACEBOOK_POST"]},
+        "master_asset_reference": {"type": ["string", "null"]},
+        "platform_targets": {"type": "array", "items": {"$ref": "#/$defs/platformTarget"}, "minItems": 1},
+        "content_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "creative_version": {"type": ["string", "null"]},
+        "approval_version": {"type": ["string", "null"]},
+        "version_binding": {"$ref": "#/$defs/versionBinding"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "special_constraints": {"$ref": "#/$defs/stringArray"},
+        "approval_sensitive_constraints": {"$ref": "#/$defs/stringArray"},
+        "cancelled": {"type": "boolean"},
+        "cancellation_reference": {"type": ["string", "null"]},
+        "blocking_upstream_issues": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"package_state": {"const": "APPROVED"}}, "required": ["package_state"]},
+          "then": {
+            "properties": {
+              "approval_reference": {"$ref": "#/$defs/approvalReference", "properties": {"validity_status": {"const": "VALID"}}},
+              "approval_version": {"type": "string", "minLength": 1},
+              "version_binding": {
+                "properties": {
+                  "content_matches_approval": {"const": true},
+                  "creative_matches_approval": {"const": true},
+                  "scope_matches_approval": {"const": true}
+                }
+              },
+              "platform_targets": {
+                "items": {
+                  "properties": {
+                    "approved_for_platform": {"const": true},
+                    "platform_metadata": {"properties": {"metadata_complete": {"const": true}}}
+                  }
+                }
+              },
+              "cancelled": {"const": false},
+              "cancellation_reference": {"type": "null"},
+              "blocking_upstream_issues": {"maxItems": 0}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"cancelled": {"const": true}}, "required": ["cancelled"]},
+          "then": {"properties": {"package_state": {"const": "CANCELLED"}, "cancellation_reference": {"type": "string", "minLength": 1}}}
+        },
+        {
+          "if": {"properties": {"content_type": {"const": "SHORT_VIDEO"}}, "required": ["content_type"]},
+          "then": {
+            "properties": {
+              "master_asset_reference": {"type": "string", "minLength": 1},
+              "creative_package_id": {"type": "string", "minLength": 1},
+              "creative_version": {"type": "string", "minLength": 1},
+              "platform_targets": {
+                "items": {"properties": {"platform": {"enum": ["INSTAGRAM_REELS", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK_REELS"]}}}
+              },
+              "authoritative_artifact_bindings": {
+                "contains": {"properties": {"artifact_type": {"const": "CREATIVE_PACKAGE"}}, "required": ["artifact_type"]}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "platformPublicationUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "update_id",
+        "publish_package_id",
+        "publication_operation_id",
+        "platform",
+        "idempotency_key",
+        "event_type",
+        "observed_at",
+        "platform_content_id",
+        "platform_url",
+        "error_category",
+        "error_summary",
+        "retry_after",
+        "confirmation_evidence"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "PLATFORM_PUBLICATION_UPDATE"},
+        "created_by": {"const": "system"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "update_id": {"type": "string", "minLength": 1},
+        "publish_package_id": {"type": "string", "minLength": 1},
+        "publication_operation_id": {"type": "string", "minLength": 1},
+        "platform": {"$ref": "#/$defs/platformId"},
+        "idempotency_key": {"type": "string", "minLength": 1},
+        "event_type": {"enum": ["REQUEST_ACCEPTED", "CONFIRMED_PUBLISHED", "CONFIRMED_FAILED", "STATUS_UNKNOWN", "ALREADY_EXISTS", "RATE_LIMITED", "AUTHENTICATION_FAILED", "CONTENT_REJECTED", "POLICY_RESTRICTED"]},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "platform_content_id": {"type": ["string", "null"]},
+        "platform_url": {"type": ["string", "null"], "format": "uri"},
+        "error_category": {"enum": ["TRANSIENT", "AUTHENTICATION", "CONTENT_REJECTION", "POLICY_OR_PERMISSION", "AMBIGUOUS", "MISSING_DEPENDENCY", "PERMANENT", null]},
+        "error_summary": {"type": ["string", "null"]},
+        "retry_after": {"type": ["string", "null"], "format": "date-time"},
+        "confirmation_evidence": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "distributionControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "control_id",
+        "publish_package_id",
+        "publication_operation_id",
+        "action",
+        "reason",
+        "requested_at"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "DISTRIBUTION_CONTROL"},
+        "created_by": {"enum": ["sam", "travis", "system"]},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "control_id": {"type": "string", "minLength": 1},
+        "publish_package_id": {"type": "string", "minLength": 1},
+        "publication_operation_id": {"type": ["string", "null"]},
+        "action": {"enum": ["CANCEL", "REQUEST_RETRY_EVALUATION", "REQUEST_RECONCILIATION"]},
+        "reason": {"type": "string", "minLength": 1},
+        "requested_at": {"type": "string", "format": "date-time"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    }
+  }
+}

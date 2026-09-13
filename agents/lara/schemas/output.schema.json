@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/lara/schemas/output.schema.json",
+  "title": "Lara Output Contract — Phase 2G",
+  "description": "Strict analytical artifacts for Lara's reviewable definition. Outputs inform decisions and do not authorize strategy or execution.",
+  "oneOf": [
+    {"$ref": "#/$defs/performanceInsight"},
+    {"$ref": "#/$defs/contentPerformanceReport"},
+    {"$ref": "#/$defs/cyclePerformanceReport"},
+    {"$ref": "#/$defs/anomalyAlert"},
+    {"$ref": "#/$defs/experimentResult"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9._-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "platform": {"$ref": "https://sam-growth-machine.local/agents/lara/schemas/input.schema.json#/$defs/platform"},
+    "dataQuality": {"$ref": "https://sam-growth-machine.local/agents/lara/schemas/input.schema.json#/$defs/dataQuality"},
+    "analysisWindow": {"$ref": "https://sam-growth-machine.local/agents/lara/schemas/input.schema.json#/$defs/analysisWindow"},
+    "metricObservation": {"$ref": "https://sam-growth-machine.local/agents/lara/schemas/input.schema.json#/$defs/metricObservation"},
+    "confidence": {"$ref": "https://sam-growth-machine.local/agents/lara/schemas/input.schema.json#/$defs/confidence"},
+    "recommendedAttention": {"enum": ["STRONG_SIGNAL", "WEAK_SIGNAL", "MIXED_SIGNAL", "NEGATIVE_SIGNAL", "NEED_MORE_DATA"]},
+    "evidenceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "statement", "evidence_type", "source_reference", "data_quality"],
+      "properties": {
+        "evidence_id": {"type": "string", "minLength": 1},
+        "statement": {"type": "string", "minLength": 1},
+        "evidence_type": {"enum": ["OBSERVATION", "COMPARISON", "EXPERIMENT"]},
+        "source_reference": {"type": "string", "minLength": 1},
+        "data_quality": {"$ref": "#/$defs/dataQuality"}
+      }
+    },
+    "comparisonContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "compared_references", "matched_dimensions", "mismatched_dimensions", "rationale"],
+      "properties": {
+        "status": {"enum": ["VALID", "LIMITED", "INVALID", "NONE"]},
+        "compared_references": {"$ref": "#/$defs/stringArray"},
+        "matched_dimensions": {"$ref": "#/$defs/stringArray"},
+        "mismatched_dimensions": {"$ref": "#/$defs/stringArray"},
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    },
+    "audienceQualityInterpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "signal_strength", "qualified_actions", "vanity_signals", "limitations"],
+      "properties": {
+        "summary": {"type": "string", "minLength": 1},
+        "signal_strength": {"enum": ["STRONG", "MODERATE", "WEAK", "MIXED", "UNKNOWN"]},
+        "qualified_actions": {"$ref": "#/$defs/stringArray"},
+        "vanity_signals": {"$ref": "#/$defs/stringArray"},
+        "limitations": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "laraAnalysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["analysis_window", "publication_references", "content_references", "platforms", "evidence", "relevant_metrics", "comparison_context", "intended_objective", "actual_outcome", "audience_quality_interpretation", "uncertainty", "possible_explanations", "what_can_be_concluded", "what_cannot_be_concluded", "recommended_attention", "source_references"],
+      "properties": {
+        "analysis_window": {"$ref": "#/$defs/analysisWindow"},
+        "publication_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "content_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "platforms": {"type": "array", "items": {"$ref": "#/$defs/platform"}, "minItems": 1, "uniqueItems": true},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidenceItem"}, "minItems": 1},
+        "relevant_metrics": {"type": "array", "items": {"$ref": "#/$defs/metricObservation"}},
+        "comparison_context": {"$ref": "#/$defs/comparisonContext"},
+        "intended_objective": {"type": "string", "minLength": 1},
+        "actual_outcome": {"type": "string", "minLength": 1},
+        "audience_quality_interpretation": {"$ref": "#/$defs/audienceQualityInterpretation"},
+        "uncertainty": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "possible_explanations": {"$ref": "#/$defs/stringArray"},
+        "what_can_be_concluded": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "what_cannot_be_concluded": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "recommended_attention": {"$ref": "#/$defs/recommendedAttention"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"}
+      }
+    },
+    "performanceInsight": {
+      "allOf": [
+        {"$ref": "https://sam-growth-machine.local/agents/travis/schemas/input.schema.json#/$defs/performanceInsight"},
+        {
+          "properties": {
+            "payload": {
+              "required": ["extensions"],
+              "properties": {
+                "extensions": {
+                  "type": "object",
+                  "required": ["lara_analysis"],
+                  "properties": {"lara_analysis": {"$ref": "#/$defs/laraAnalysis"}},
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "contentPerformanceReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_type", "created_by", "source_input_references", "report_id", "content_references", "publication_references", "platforms", "intended_content_role", "intended_objective", "measurement_windows", "observed_metrics", "cross_platform_comparisons", "meaningful_strengths", "meaningful_weaknesses", "audience_quality_interpretation", "evidence_quality", "anomalies", "confidence", "lessons", "unresolved_questions", "source_references"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "CONTENT_PERFORMANCE_REPORT"},
+        "created_by": {"const": "lara"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "report_id": {"type": "string", "minLength": 1},
+        "content_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "publication_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "platforms": {"type": "array", "items": {"$ref": "#/$defs/platform"}, "minItems": 1, "uniqueItems": true},
+        "intended_content_role": {"enum": ["REACH", "AUTHORITY", "BOTH"]},
+        "intended_objective": {"type": "string", "minLength": 1},
+        "measurement_windows": {"type": "array", "items": {"$ref": "#/$defs/analysisWindow"}, "minItems": 1},
+        "observed_metrics": {"type": "array", "items": {"$ref": "#/$defs/metricObservation"}},
+        "cross_platform_comparisons": {"type": "array", "items": {"$ref": "#/$defs/comparisonContext"}},
+        "meaningful_strengths": {"$ref": "#/$defs/stringArray"},
+        "meaningful_weaknesses": {"$ref": "#/$defs/stringArray"},
+        "audience_quality_interpretation": {"$ref": "#/$defs/audienceQualityInterpretation"},
+        "evidence_quality": {"$ref": "#/$defs/dataQuality"},
+        "anomalies": {"$ref": "#/$defs/stringArray"},
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "lessons": {"$ref": "#/$defs/stringArray"},
+        "unresolved_questions": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "objectiveCoverageItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content_role", "asset_count", "coverage_summary"],
+      "properties": {
+        "content_role": {"enum": ["REACH", "AUTHORITY", "BOTH"]},
+        "asset_count": {"type": "integer", "minimum": 0},
+        "coverage_summary": {"type": "string", "minLength": 1}
+      }
+    },
+    "publishingSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targeted_publications", "confirmed_publications", "failed_or_blocked_publications", "ambiguous_publications", "summary"],
+      "properties": {
+        "targeted_publications": {"type": "integer", "minimum": 0},
+        "confirmed_publications": {"type": "integer", "minimum": 0},
+        "failed_or_blocked_publications": {"type": "integer", "minimum": 0},
+        "ambiguous_publications": {"type": "integer", "minimum": 0},
+        "summary": {"type": "string", "minLength": 1}
+      }
+    },
+    "patternObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pattern", "sample_count", "comparison_quality", "confidence", "limitations"],
+      "properties": {
+        "pattern": {"type": "string", "minLength": 1},
+        "sample_count": {"type": "integer", "minimum": 1},
+        "comparison_quality": {"enum": ["VALID", "LIMITED", "INVALID"]},
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "limitations": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "cyclePerformanceReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_type", "created_by", "source_input_references", "cycle_id", "analysis_window", "publishing_summary", "objective_coverage", "strongest_signals", "weakest_signals", "emerging_patterns", "content_role_performance", "platform_observations", "audience_quality_observations", "experiments_reviewed", "data_gaps", "anomalies", "lessons", "confidence", "recommended_questions_for_travis", "source_references"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "CYCLE_PERFORMANCE_REPORT"},
+        "created_by": {"const": "lara"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "cycle_id": {"type": "string", "minLength": 1},
+        "analysis_window": {"$ref": "#/$defs/analysisWindow"},
+        "publishing_summary": {"$ref": "#/$defs/publishingSummary"},
+        "objective_coverage": {"type": "array", "items": {"$ref": "#/$defs/objectiveCoverageItem"}},
+        "strongest_signals": {"$ref": "#/$defs/stringArray"},
+        "weakest_signals": {"$ref": "#/$defs/stringArray"},
+        "emerging_patterns": {"type": "array", "items": {"$ref": "#/$defs/patternObservation"}},
+        "content_role_performance": {"$ref": "#/$defs/stringArray"},
+        "platform_observations": {"$ref": "#/$defs/stringArray"},
+        "audience_quality_observations": {"$ref": "#/$defs/stringArray"},
+        "experiments_reviewed": {"$ref": "#/$defs/stringArray"},
+        "data_gaps": {"$ref": "#/$defs/stringArray"},
+        "anomalies": {"$ref": "#/$defs/stringArray"},
+        "lessons": {"$ref": "#/$defs/stringArray"},
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "recommended_questions_for_travis": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "anomalyAlert": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_type", "created_by", "source_input_references", "alert_id", "publication_references", "platforms", "anomaly_type", "observation", "evidence", "why_it_matters", "data_quality", "possible_explanations", "urgency", "uncertainty", "next_analytical_check", "status", "source_references"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "ANOMALY_ALERT"},
+        "created_by": {"const": "lara"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "alert_id": {"type": "string", "minLength": 1},
+        "publication_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "platforms": {"type": "array", "items": {"$ref": "#/$defs/platform"}, "minItems": 1, "uniqueItems": true},
+        "anomaly_type": {"enum": ["UNEXPECTED_SPIKE", "UNEXPECTED_COLLAPSE", "UNUSUAL_AUDIENCE_SOURCE", "METRICS_UNAVAILABLE", "ANALYTICS_INCONSISTENCY", "ABNORMAL_ENGAGEMENT", "SUSPICIOUS_METRIC_BEHAVIOR", "PUBLICATION_WITHOUT_ANALYTICS", "UNEXPECTED_DUPLICATE", "METRIC_DEFINITION_CHANGED"]},
+        "observation": {"type": "string", "minLength": 1},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidenceItem"}, "minItems": 1},
+        "why_it_matters": {"type": "string", "minLength": 1},
+        "data_quality": {"$ref": "#/$defs/dataQuality"},
+        "possible_explanations": {"$ref": "#/$defs/stringArray"},
+        "urgency": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+        "uncertainty": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "next_analytical_check": {"type": "string", "minLength": 1},
+        "status": {"enum": ["OPEN", "MONITORING", "RESOLVED"]},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "experimentCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["condition_id", "description", "content_references", "publication_references", "measurement_windows"],
+      "properties": {
+        "condition_id": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "content_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "publication_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "measurement_windows": {"type": "array", "items": {"$ref": "#/$defs/analysisWindow"}, "minItems": 1}
+      }
+    },
+    "experimentResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "artifact_type", "created_by", "source_input_references", "experiment_id", "hypothesis", "compared_conditions", "success_criteria_reference", "setup_quality", "evidence", "result", "confidence", "limitations", "conclusion", "recommendation_for_attention", "source_references"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "EXPERIMENT_RESULT"},
+        "created_by": {"const": "lara"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "experiment_id": {"type": "string", "minLength": 1},
+        "hypothesis": {"type": "string", "minLength": 1},
+        "compared_conditions": {"type": "array", "items": {"$ref": "#/$defs/experimentCondition"}, "minItems": 2},
+        "success_criteria_reference": {"type": "string", "minLength": 1},
+        "setup_quality": {"enum": ["STRONG", "LIMITED", "WEAK"]},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidenceItem"}, "minItems": 1},
+        "result": {"enum": ["SUPPORTED", "NOT_SUPPORTED", "INCONCLUSIVE"]},
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "limitations": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "conclusion": {"type": "string", "minLength": 1},
+        "recommendation_for_attention": {"$ref": "#/$defs/recommendedAttention"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"setup_quality": {"const": "WEAK"}}, "required": ["setup_quality"]},
+          "then": {"properties": {"result": {"const": "INCONCLUSIVE"}, "recommendation_for_attention": {"const": "NEED_MORE_DATA"}}}
+        }
+      ]
+    }
+  }
+}

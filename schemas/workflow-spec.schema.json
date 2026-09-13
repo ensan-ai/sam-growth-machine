@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/schemas/workflow-spec.schema.json",
+  "title": "SAM Growth Machine High-Level Workflow Specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "workflow_id", "name", "status", "scope", "participants", "weekly_content_target", "sequence", "constraints"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "workflow_id": {"const": "personal-brand-growth-loop"},
+    "name": {"type": "string", "minLength": 1},
+    "status": {"const": "high_level_specification_only"},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "business", "version"],
+      "properties": {
+        "product": {"const": "SAM Growth Machine"},
+        "business": {"const": "SAM PERSONAL BRAND"},
+        "version": {"const": "V1"}
+      }
+    },
+    "participants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["human_authority", "ai_employees"],
+      "properties": {
+        "human_authority": {"const": "sam"},
+        "ai_employees": {
+          "type": "array",
+          "prefixItems": [
+            {"const": "travis"}, {"const": "saly"}, {"const": "adam"},
+            {"const": "brain"}, {"const": "jax"}, {"const": "maro"}, {"const": "lara"}
+          ],
+          "items": false,
+          "minItems": 7,
+          "maxItems": 7
+        }
+      }
+    },
+    "weekly_content_target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["original_shorts", "short_distribution_platforms", "linkedin_posts", "x_posts", "facebook_feed_posts", "repurposing_supported"],
+      "properties": {
+        "original_shorts": {"const": 3},
+        "short_distribution_platforms": {
+          "type": "array",
+          "prefixItems": [
+            {"const": "Instagram Reels"}, {"const": "TikTok"},
+            {"const": "YouTube Shorts"}, {"const": "Facebook Reels"}
+          ],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "linkedin_posts": {"const": 3},
+        "x_posts": {"const": 2},
+        "facebook_feed_posts": {"const": 3},
+        "repurposing_supported": {"const": true}
+      }
+    },
+    "sequence": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "label", "actors", "stage_type"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1, "maximum": 11},
+          "label": {"type": "string", "minLength": 1},
+          "actors": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+          "stage_type": {"enum": ["human", "ai_employee", "multi_ai_employee_stage", "human_approval", "cycle_transition"]}
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executable", "detailed_behavior_defined", "publishing_implemented"],
+      "properties": {
+        "executable": {"const": false},
+        "detailed_behavior_defined": {"const": false},
+        "publishing_implemented": {"const": false}
+      }
+    }
+  }
+}

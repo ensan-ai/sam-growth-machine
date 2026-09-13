@@ -1,0 +1,323 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/maro/schemas/output.schema.json",
+  "title": "Maro Output Contract",
+  "description": "Strict Phase 2F distribution artifacts. They specify controlled operations, receipts, aggregate results, blockers, and reconciliation without implementing publication.",
+  "oneOf": [
+    {"$ref": "#/$defs/publicationOperation"},
+    {"$ref": "#/$defs/publicationReceipt"},
+    {"$ref": "#/$defs/distributionResult"},
+    {"$ref": "#/$defs/distributionBlocker"},
+    {"$ref": "#/$defs/reconciliationRequest"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "platformId": {
+      "enum": ["INSTAGRAM_REELS", "TIKTOK", "YOUTUBE_SHORTS", "FACEBOOK_REELS", "LINKEDIN", "X", "FACEBOOK_FEED", "OTHER"]
+    },
+    "failureCategory": {
+      "enum": ["TRANSIENT", "AUTHENTICATION", "CONTENT_REJECTION", "POLICY_OR_PERMISSION", "AMBIGUOUS", "MISSING_DEPENDENCY", "PERMANENT"]
+    },
+    "publicationOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "publication_operation_id",
+        "publish_package_id",
+        "platform",
+        "publication_identity",
+        "master_asset_reference",
+        "platform_metadata",
+        "scheduling_intent",
+        "content_version",
+        "creative_version",
+        "approval_reference",
+        "operation_state"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "PUBLICATION_OPERATION"},
+        "created_by": {"const": "maro"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "publication_operation_id": {"type": "string", "minLength": 1},
+        "publish_package_id": {"type": "string", "minLength": 1},
+        "platform": {"$ref": "#/$defs/platformId"},
+        "publication_identity": {"$ref": "https://sam-growth-machine.local/agents/maro/schemas/input.schema.json#/$defs/publicationIdentity"},
+        "master_asset_reference": {"type": "string", "minLength": 1},
+        "platform_metadata": {"$ref": "https://sam-growth-machine.local/agents/maro/schemas/input.schema.json#/$defs/platformMetadata"},
+        "scheduling_intent": {"$ref": "https://sam-growth-machine.local/agents/maro/schemas/input.schema.json#/$defs/schedulingIntent"},
+        "content_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "creative_version": {"type": ["string", "null"]},
+        "approval_reference": {"$ref": "https://sam-growth-machine.local/agents/maro/schemas/input.schema.json#/$defs/approvalReference"},
+        "operation_state": {"enum": ["APPROVED", "SCHEDULED", "PUBLISHING"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "publicationReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "receipt_id",
+        "publish_package_id",
+        "publication_operation_id",
+        "platform",
+        "status",
+        "attempted_at",
+        "published_at",
+        "platform_content_id",
+        "platform_url",
+        "content_version",
+        "creative_version",
+        "approval_reference",
+        "retry_count",
+        "error_category",
+        "error_summary",
+        "confirmation_basis",
+        "next_action"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "PUBLICATION_RECEIPT"},
+        "created_by": {"const": "maro"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "receipt_id": {"type": "string", "minLength": 1},
+        "publish_package_id": {"type": "string", "minLength": 1},
+        "publication_operation_id": {"type": "string", "minLength": 1},
+        "platform": {"$ref": "#/$defs/platformId"},
+        "status": {"enum": ["DRAFT_PACKAGE", "AWAITING_APPROVAL", "APPROVED", "SCHEDULED", "PUBLISHING", "PUBLISHED", "PARTIAL_FAILURE", "FAILED", "BLOCKED", "CANCELLED"]},
+        "attempted_at": {"type": ["string", "null"], "format": "date-time"},
+        "published_at": {"type": ["string", "null"], "format": "date-time"},
+        "platform_content_id": {"type": ["string", "null"]},
+        "platform_url": {"type": ["string", "null"], "format": "uri"},
+        "content_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "creative_version": {"type": ["string", "null"]},
+        "approval_reference": {"$ref": "https://sam-growth-machine.local/agents/maro/schemas/input.schema.json#/$defs/approvalReference"},
+        "retry_count": {"type": "integer", "minimum": 0},
+        "error_category": {"oneOf": [{"$ref": "#/$defs/failureCategory"}, {"type": "null"}]},
+        "error_summary": {"type": ["string", "null"]},
+        "confirmation_basis": {"enum": ["PLATFORM_CONFIRMED_WITH_ID", "PLATFORM_CONFIRMED_WITHOUT_ID", "NOT_CONFIRMED"]},
+        "next_action": {"type": ["string", "null"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "PUBLISHED"}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "published_at": {"type": "string", "format": "date-time"},
+              "confirmation_basis": {"enum": ["PLATFORM_CONFIRMED_WITH_ID", "PLATFORM_CONFIRMED_WITHOUT_ID"]},
+              "error_category": {"type": "null"},
+              "error_summary": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"confirmation_basis": {"const": "PLATFORM_CONFIRMED_WITH_ID"}}, "required": ["confirmation_basis"]},
+          "then": {"properties": {"platform_content_id": {"type": "string", "minLength": 1}}}
+        },
+        {
+          "if": {"properties": {"confirmation_basis": {"const": "PLATFORM_CONFIRMED_WITHOUT_ID"}}, "required": ["confirmation_basis"]},
+          "then": {"properties": {"platform_content_id": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"status": {"enum": ["FAILED", "BLOCKED", "PARTIAL_FAILURE"]}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "error_category": {"$ref": "#/$defs/failureCategory"},
+              "error_summary": {"type": "string", "minLength": 1},
+              "confirmation_basis": {"const": "NOT_CONFIRMED"}
+            }
+          }
+        }
+      ]
+    },
+    "platformResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "publication_operation_id", "receipt_id", "status", "retryable", "error_category", "summary"],
+      "properties": {
+        "platform": {"$ref": "#/$defs/platformId"},
+        "publication_operation_id": {"type": "string", "minLength": 1},
+        "receipt_id": {"type": "string", "minLength": 1},
+        "status": {"enum": ["SCHEDULED", "PUBLISHING", "PUBLISHED", "FAILED", "BLOCKED", "CANCELLED"]},
+        "retryable": {"type": "boolean"},
+        "error_category": {"oneOf": [{"$ref": "#/$defs/failureCategory"}, {"type": "null"}]},
+        "summary": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "distributionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "distribution_result_id",
+        "publish_package_id",
+        "master_asset_reference",
+        "per_platform_results",
+        "overall_status",
+        "target_count",
+        "published_count",
+        "failed_or_blocked_count",
+        "all_targets_confirmed",
+        "partial_failure_detected",
+        "blockers",
+        "retryable_failures",
+        "non_retryable_failures",
+        "ambiguous_operations",
+        "escalation_requirements"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "DISTRIBUTION_RESULT"},
+        "created_by": {"const": "maro"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "distribution_result_id": {"type": "string", "minLength": 1},
+        "publish_package_id": {"type": "string", "minLength": 1},
+        "master_asset_reference": {"type": ["string", "null"]},
+        "per_platform_results": {"type": "array", "items": {"$ref": "#/$defs/platformResult"}, "minItems": 1},
+        "overall_status": {"enum": ["SCHEDULED", "PUBLISHING", "PUBLISHED", "PARTIAL_FAILURE", "FAILED", "BLOCKED", "CANCELLED"]},
+        "target_count": {"type": "integer", "minimum": 1},
+        "published_count": {"type": "integer", "minimum": 0},
+        "failed_or_blocked_count": {"type": "integer", "minimum": 0},
+        "all_targets_confirmed": {"type": "boolean"},
+        "partial_failure_detected": {"type": "boolean"},
+        "blockers": {"$ref": "#/$defs/stringArray"},
+        "retryable_failures": {"$ref": "#/$defs/stringArray"},
+        "non_retryable_failures": {"$ref": "#/$defs/stringArray"},
+        "ambiguous_operations": {"$ref": "#/$defs/stringArray"},
+        "escalation_requirements": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"overall_status": {"const": "PUBLISHED"}}, "required": ["overall_status"]},
+          "then": {
+            "properties": {
+              "per_platform_results": {"items": {"properties": {"status": {"const": "PUBLISHED"}}}},
+              "all_targets_confirmed": {"const": true},
+              "partial_failure_detected": {"const": false},
+              "failed_or_blocked_count": {"const": 0},
+              "blockers": {"maxItems": 0},
+              "retryable_failures": {"maxItems": 0},
+              "non_retryable_failures": {"maxItems": 0},
+              "ambiguous_operations": {"maxItems": 0}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"overall_status": {"const": "PARTIAL_FAILURE"}}, "required": ["overall_status"]},
+          "then": {
+            "properties": {
+              "per_platform_results": {
+                "allOf": [
+                  {"contains": {"properties": {"status": {"const": "PUBLISHED"}}, "required": ["status"]}},
+                  {"contains": {"properties": {"status": {"enum": ["FAILED", "BLOCKED"]}}, "required": ["status"]}}
+                ]
+              },
+              "all_targets_confirmed": {"const": false},
+              "partial_failure_detected": {"const": true},
+              "published_count": {"minimum": 1},
+              "failed_or_blocked_count": {"minimum": 1}
+            }
+          }
+        }
+      ]
+    },
+    "distributionBlocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "blocker_id",
+        "publish_package_id",
+        "platform",
+        "blocker_type",
+        "reason",
+        "required_resolution",
+        "destinations",
+        "publication_prohibited"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "DISTRIBUTION_BLOCKER"},
+        "created_by": {"const": "maro"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "blocker_id": {"type": "string", "minLength": 1},
+        "publish_package_id": {"type": "string", "minLength": 1},
+        "platform": {"oneOf": [{"$ref": "#/$defs/platformId"}, {"type": "null"}]},
+        "blocker_type": {"enum": ["MISSING_APPROVAL", "INVALID_APPROVAL", "VERSION_MISMATCH", "SCOPE_MISMATCH", "MISSING_ASSET", "MISSING_METADATA", "INVALID_SCHEDULE", "CANCELLED", "UPSTREAM_QUALITY_ISSUE", "AUTHENTICATION", "CONTENT_REJECTION", "POLICY_OR_PERMISSION", "PERMANENT_FAILURE"]},
+        "reason": {"type": "string", "minLength": 1},
+        "required_resolution": {"type": "string", "minLength": 1},
+        "destinations": {"type": "array", "items": {"enum": ["sam", "travis", "adam", "brain", "jax", "system"]}, "minItems": 1, "uniqueItems": true},
+        "publication_prohibited": {"const": true},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "reconciliationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "reconciliation_request_id",
+        "publish_package_id",
+        "publication_operation_id",
+        "platform",
+        "idempotency_key",
+        "reason_type",
+        "known_state",
+        "required_checks",
+        "retry_prohibited_until_resolved"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "RECONCILIATION_REQUEST"},
+        "created_by": {"const": "maro"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "reconciliation_request_id": {"type": "string", "minLength": 1},
+        "publish_package_id": {"type": "string", "minLength": 1},
+        "publication_operation_id": {"type": "string", "minLength": 1},
+        "platform": {"$ref": "#/$defs/platformId"},
+        "idempotency_key": {"type": "string", "minLength": 1},
+        "reason_type": {"enum": ["AMBIGUOUS_OUTCOME", "ALREADY_EXISTS", "DUPLICATE_EVENT", "RETRY_AFTER_CONFIRMED_PUBLICATION"]},
+        "known_state": {"type": "string", "minLength": 1},
+        "required_checks": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "retry_prohibited_until_resolved": {"const": true},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    }
+  }
+}

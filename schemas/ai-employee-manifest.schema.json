@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/schemas/ai-employee-manifest.schema.json",
+  "title": "SAM AI Employee Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "standard_version",
+    "definition_status",
+    "identity",
+    "organization",
+    "mission",
+    "responsibilities",
+    "contracts",
+    "capabilities",
+    "control",
+    "handoffs",
+    "runtime_policy",
+    "memory",
+    "operations",
+    "quality",
+    "observability"
+  ],
+  "$defs": {
+    "nullableString": {"type": ["string", "null"]},
+    "stringArray": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "configurationStatus": {
+      "enum": [
+        "unconfigured_phase_2",
+        "partially_configured_phase_2a",
+        "configured_phase_2a",
+        "partially_configured_phase_2b",
+        "configured_phase_2b",
+        "partially_configured_phase_2c",
+        "configured_phase_2c",
+        "partially_configured_phase_2d",
+        "configured_phase_2d",
+        "partially_configured_phase_2e",
+        "configured_phase_2e",
+        "partially_configured_phase_2f",
+        "configured_phase_2f",
+        "partially_configured_phase_2g",
+        "configured_phase_2g"
+      ]
+    }
+  },
+  "properties": {
+    "standard_version": {"const": "1.0.0"},
+    "definition_status": {"enum": ["shell", "reviewable"]},
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["employee_id", "name", "title", "department", "version"],
+      "properties": {
+        "employee_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+        "name": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "department": {"$ref": "#/$defs/nullableString"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "organization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "reports_to", "direct_collaborators", "organizational_position"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "reports_to": {"$ref": "#/$defs/nullableString"},
+        "direct_collaborators": {"$ref": "#/$defs/stringArray"},
+        "organizational_position": {"$ref": "#/$defs/nullableString"}
+      }
+    },
+    "mission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "primary_mission", "business_reason_for_existence"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "primary_mission": {"$ref": "#/$defs/nullableString"},
+        "business_reason_for_existence": {"$ref": "#/$defs/nullableString"}
+      }
+    },
+    "responsibilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "owns", "does_not_own"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "owns": {"$ref": "#/$defs/stringArray"},
+        "does_not_own": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "accepted_input_types", "required_output_types", "input_schema", "output_schema"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "accepted_input_types": {"$ref": "#/$defs/stringArray"},
+        "required_output_types": {"$ref": "#/$defs/stringArray"},
+        "input_schema": {"const": "schemas/input.schema.json"},
+        "output_schema": {"const": "schemas/output.schema.json"}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "skills", "tools"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "skills": {"$ref": "#/$defs/stringArray"},
+        "tools": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "permissions", "approval_requirements", "autonomy_level"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "permissions": {"$ref": "#/$defs/stringArray"},
+        "approval_requirements": {"$ref": "#/$defs/stringArray"},
+        "autonomy_level": {"$ref": "#/$defs/nullableString"}
+      }
+    },
+    "handoffs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "receives_from", "sends_to"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "receives_from": {"$ref": "#/$defs/stringArray"},
+        "sends_to": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "runtime_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "model_policy", "cost_budget_policy", "execution_environment", "retry_policy", "timeout_policy"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "model_policy": {"$ref": "#/$defs/nullableString"},
+        "cost_budget_policy": {"$ref": "#/$defs/nullableString"},
+        "execution_environment": {"$ref": "#/$defs/nullableString"},
+        "retry_policy": {"$ref": "#/$defs/nullableString"},
+        "timeout_policy": {"$ref": "#/$defs/nullableString"}
+      }
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "working_memory_policy", "long_term_memory_policy", "must_not_store"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "working_memory_policy": {"$ref": "#/$defs/nullableString"},
+        "long_term_memory_policy": {"$ref": "#/$defs/nullableString"},
+        "must_not_store": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "operations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "triggers", "schedules", "failure_escalation_behavior"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "triggers": {"$ref": "#/$defs/stringArray"},
+        "schedules": {"$ref": "#/$defs/stringArray"},
+        "failure_escalation_behavior": {"$ref": "#/$defs/nullableString"}
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "guardrails", "kpis", "evals_file"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "guardrails": {"$ref": "#/$defs/stringArray"},
+        "kpis": {"$ref": "#/$defs/stringArray"},
+        "evals_file": {"const": "evals/cases.yaml"}
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration_status", "events", "receipts", "tracing_requirements"],
+      "properties": {
+        "configuration_status": {"$ref": "#/$defs/configurationStatus"},
+        "events": {"$ref": "#/$defs/stringArray"},
+        "receipts": {"$ref": "#/$defs/stringArray"},
+        "tracing_requirements": {"$ref": "#/$defs/stringArray"}
+      }
+    }
+  }
+}

@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/brain/schemas/input.schema.json",
+  "title": "Brain Input Contract",
+  "description": "Strict Phase 2D writing inputs. Adam's canonical CONTENT_BRIEF definition is referenced directly so Brain cannot loosen or reinterpret the approved strategy interface.",
+  "oneOf": [
+    {"$ref": "#/$defs/contentBriefInput"},
+    {"$ref": "#/$defs/sourceContext"},
+    {"$ref": "#/$defs/samDirection"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "revisionInstruction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "original_draft_reference",
+        "requested_change",
+        "reason",
+        "constraints_must_remain_unchanged"
+      ],
+      "properties": {
+        "original_draft_reference": {"type": "string", "minLength": 1},
+        "requested_change": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "constraints_must_remain_unchanged": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "brainWritingContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "language": {"type": "string", "minLength": 1},
+        "voice_profile_reference": {"type": ["string", "null"]},
+        "format_profile_reference": {"type": ["string", "null"]},
+        "platform_profile_reference": {"type": ["string", "null"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "contentBriefInput": {
+      "allOf": [
+        {
+          "$ref": "https://sam-growth-machine.local/agents/adam/schemas/output.schema.json#/$defs/contentBrief"
+        },
+        {
+          "properties": {
+            "extensions": {
+              "type": "object",
+              "properties": {
+                "brain_revision": {"$ref": "#/$defs/revisionInstruction"},
+                "brain_writing": {"$ref": "#/$defs/brainWritingContext"}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "sourceMaterial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "material_id",
+        "classification",
+        "statement",
+        "source_reference",
+        "attribution",
+        "certainty",
+        "usage_constraint"
+      ],
+      "properties": {
+        "material_id": {"type": "string", "minLength": 1},
+        "classification": {
+          "enum": ["SOURCE_BACKED_FACT", "INTERPRETATION", "SAM_OPINION"]
+        },
+        "statement": {"type": "string", "minLength": 1},
+        "source_reference": {"type": "string", "minLength": 1},
+        "attribution": {"type": ["string", "null"]},
+        "certainty": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Preserve source qualifiers such as may, observed, estimated, or opinion. Exact taxonomy remains unresolved."
+        },
+        "usage_constraint": {"type": ["string", "null"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "sourceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "source_context_id",
+        "brief_id",
+        "materials",
+        "conflicts",
+        "completeness_note"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "SOURCE_CONTEXT"},
+        "created_by": {"enum": ["adam", "saly", "sam", "system"]},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "source_context_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "materials": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/sourceMaterial"},
+          "minItems": 1
+        },
+        "conflicts": {"$ref": "#/$defs/stringArray"},
+        "completeness_note": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "samDirection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "direction_id",
+        "brief_id",
+        "direction_type",
+        "requested_change",
+        "reason",
+        "constraints_must_remain_unchanged",
+        "original_draft_reference",
+        "language",
+        "platform",
+        "format"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "SAM_DIRECTION"},
+        "created_by": {"const": "sam"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "direction_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "direction_type": {
+          "enum": ["INITIAL_WRITING_CONSTRAINT", "TARGETED_REVISION", "VOICE_FEEDBACK"]
+        },
+        "requested_change": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "constraints_must_remain_unchanged": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "original_draft_reference": {"type": ["string", "null"]},
+        "language": {"type": ["string", "null"]},
+        "platform": {
+          "enum": [
+            "Instagram Reels",
+            "TikTok",
+            "YouTube Shorts",
+            "Facebook Reels",
+            "LinkedIn",
+            "X",
+            "Facebook Feed",
+            null
+          ]
+        },
+        "format": {
+          "enum": ["SHORT_VIDEO", "LINKEDIN_POST", "X_POST", "X_THREAD", "FACEBOOK_POST", "OTHER", null]
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"direction_type": {"const": "TARGETED_REVISION"}}, "required": ["direction_type"]},
+          "then": {"properties": {"original_draft_reference": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    }
+  }
+}

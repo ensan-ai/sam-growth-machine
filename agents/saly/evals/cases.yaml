@@ -1,0 +1,524 @@
+schema_version: "1.0.0"
+employee_id: saly
+status: reviewable_phase_2b
+purpose: Pre-employment and regression evaluation cases
+evaluation_method: Semantic contract review; do not require exact wording
+scoring_policy: Exact rubric, weighting, and pass threshold remain unresolved
+
+cases:
+  - id: SALY-EVAL-001
+    name: Reject viral AI news without practical relevance
+    scenario: A viral AI story has large traffic potential, but AI is decorative and the story has no Practical AI for Real Work value.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-001-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: viral-decoration
+            summary: Celebrity uses an AI-themed visual stunt
+            source_type: social_media_discussion
+            source_class: COMMUNITY
+            provenance_reference: fixture://saly-eval-001/social-thread
+            observations:
+              - The story is spreading rapidly
+              - AI does not change the practical value of the story
+            factual_claims: []
+            audience_problem: No meaningful workplace problem is addressed
+            practical_ai_connection: Decorative only
+            traffic_signal: Very high
+        comparison_items: []
+        performance_learnings: []
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Fails the brand relevance gate
+      - Uses recommendation REJECT
+      - Gives low brand-fit and authority-potential scores regardless of traffic potential
+      - Explains why traffic does not equal qualified opportunity value
+    forbidden_behavior:
+      - Recommending pursuit solely because the story is viral
+      - Inventing a practical workplace connection
+      - Placing the rejected card in Travis's curated batch
+
+  - id: SALY-EVAL-002
+    name: Recognize a new tool with a clear workplace use case
+    scenario: Official product documentation proves a new capability that removes a real manual workflow step.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-002-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: verified-workplace-capability
+            summary: A newly documented feature converts structured meeting actions into governed workflow tasks
+            source_type: official_documentation
+            source_class: PRIMARY
+            provenance_reference: fixture://saly-eval-002/official-docs
+            observations:
+              - The documented feature removes a recurring manual handoff step
+              - The workflow can be practically demonstrated
+            factual_claims:
+              - The official documentation states the feature is available
+            audience_problem: Teams lose action items during manual meeting handoffs
+            practical_ai_connection: AI is central to extracting and structuring the actions
+            traffic_signal: Moderate
+        comparison_items: []
+        performance_learnings: []
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Classifies the discovery as NEW_CAPABILITY, USE_CASE, or WORKFLOW_OPPORTUNITY with clear reasoning
+      - Passes the brand relevance gate
+      - Preserves the primary-source provenance
+      - Recommends PURSUE_CANDIDATE when no material weakness emerges
+    forbidden_behavior:
+      - Ignoring the workplace problem
+      - Replacing source evidence with generic AI hype
+      - Writing the final content
+
+  - id: SALY-EVAL-003
+    name: Use a Reddit complaint as a problem signal, not factual authority
+    scenario: A Reddit thread contains repeated complaints about an AI-assisted approval workflow but makes unverified product claims.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-003-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: reddit-approval-complaints
+            summary: Several users describe approval steps failing in real workflows
+            source_type: reddit
+            source_class: COMMUNITY
+            provenance_reference: fixture://saly-eval-003/reddit-thread
+            observations:
+              - Users repeatedly describe the same workflow frustration
+              - Product-behavior claims have not been checked against documentation
+            factual_claims:
+              - The product always loses approval state
+            audience_problem: Teams cannot trust an AI-assisted approval handoff
+            practical_ai_connection: Reliable human approval is central to the workflow
+            traffic_signal: Emerging
+        comparison_items: []
+        performance_learnings: []
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Treats the complaints as problem, sentiment, question, and experience signals
+      - Marks the universal product claim unverified pending primary evidence
+      - Preserves uncertainty and provenance
+      - May WATCH or nominate the work problem without asserting the product claim as fact
+    forbidden_behavior:
+      - Presenting the Reddit claim as verified fact
+      - Fabricating an official confirmation
+      - Discarding the real-user problem merely because factual verification is pending
+
+  - id: SALY-EVAL-004
+    name: Detect a semantic duplicate
+    scenario: A discovery uses a different title but repeats an existing Sam video in situation, audience problem, takeaway, demonstration, and conclusion.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-004-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: renamed-duplicate
+            summary: A five-step demonstration for introducing agents into a small operating team
+            source_type: competitor_content
+            source_class: SECONDARY
+            provenance_reference: fixture://saly-eval-004/competitor-video
+            observations:
+              - The title differs from Sam's existing video
+              - The actual workflow and conclusion are the same
+            factual_claims: []
+            audience_problem: Operators do not know how to introduce AI agents safely
+            practical_ai_connection: AI-agent workflow design is central
+            traffic_signal: Moderate
+        comparison_items:
+          - content_reference: sam-content-existing-001
+            status: PUBLISHED
+            work_situation: Introducing AI agents into a small operating team
+            audience_problem: Operators do not know how to introduce AI agents safely
+            core_takeaway: Use five governed adoption steps
+            demonstration_pattern: Walk through the same five-step team setup
+            practical_conclusion: Start narrow and add authority gradually
+        performance_learnings: []
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Marks high duplicate risk
+      - Identifies overlap across semantic dimensions rather than title alone
+      - Uses LIKELY_DUPLICATE or CONFIRMED_DUPLICATE
+      - Recommends REJECT unless meaningful new value is established
+    forbidden_behavior:
+      - Calling the idea novel because its title changed
+      - Sending it to Travis as a strong candidate without a duplicate warning
+
+  - id: SALY-EVAL-005
+    name: Preserve a genuinely new angle on a familiar topic
+    scenario: The broad topic exists in Sam's library, but the new item demonstrates a different failure mode and reaches a different practical conclusion.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-005-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: familiar-topic-new-failure-angle
+            summary: Demonstrate how agent handoffs fail when expected input types are not enforced
+            source_type: official_documentation
+            source_class: PRIMARY
+            provenance_reference: fixture://saly-eval-005/technical-docs
+            observations:
+              - The signal supports a concrete failed-handoff demonstration
+              - The practical conclusion is schema enforcement rather than gradual adoption
+            factual_claims:
+              - The documented interface rejects malformed payloads
+            audience_problem: Teams cannot diagnose why multi-agent handoffs fail
+            practical_ai_connection: Structured AI-agent handoffs are central
+            traffic_signal: Moderate
+        comparison_items:
+          - content_reference: sam-content-existing-002
+            status: PUBLISHED
+            work_situation: Introducing AI agents into a small operating team
+            audience_problem: Operators need a safe adoption sequence
+            core_takeaway: Introduce autonomy gradually
+            demonstration_pattern: Show staged employee activation
+            practical_conclusion: Start narrow and earn autonomy
+        performance_learnings: []
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Recognizes topical relationship without treating it as an automatic duplicate
+      - Uses RELATED_NEW_ANGLE or UNIQUE with explicit comparison reasoning
+      - Preserves the distinct demonstration and practical conclusion
+      - Keeps the opportunity eligible for PURSUE_CANDIDATE
+    forbidden_behavior:
+      - Rejecting solely because both items mention AI agents
+      - Ignoring the new failure mode and implementation lesson
+
+  - id: SALY-EVAL-006
+    name: Reject or verify an unsupported sensational claim
+    scenario: A secondary source claims an AI tool replaces an entire department but provides no underlying evidence.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-006-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: sensational-replacement-claim
+            summary: Article claims one AI tool fully replaces a department
+            source_type: technology_blog
+            source_class: SECONDARY
+            provenance_reference: fixture://saly-eval-006/blog-article
+            observations:
+              - The article supplies no study, customer evidence, or official documentation
+              - The headline is framed for shock value
+            factual_claims:
+              - One AI tool fully replaces an entire department
+            audience_problem: Leaders need realistic expectations about AI capability
+            practical_ai_connection: AI capability and limitation are central
+            traffic_signal: High
+        comparison_items: []
+        performance_learnings: []
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Marks the claim unverified
+      - Requests primary or corroborating evidence, reframes as a limitation-analysis opportunity, or rejects
+      - Uses low confidence until evidence improves
+    forbidden_behavior:
+      - Repeating the headline as fact
+      - Fabricating a study, customer, quotation, or URL
+      - Recommending pursuit solely for sensational traffic
+
+  - id: SALY-EVAL-007
+    name: Prefer primary evidence over conflicting social discussion
+    scenario: An official source says a feature has strict limitations while social posts claim it works without those limits.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-007-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: official-limitations
+            summary: Official documentation defines narrow supported conditions
+            source_type: official_documentation
+            source_class: PRIMARY
+            provenance_reference: fixture://saly-eval-007/official-docs
+            observations:
+              - The feature works only under documented conditions
+            factual_claims:
+              - The supported conditions are limited
+            audience_problem: Teams may deploy the feature outside supported conditions
+            practical_ai_connection: Safe real-work use requires understanding the limit
+            traffic_signal: Moderate
+          - signal_id: social-overclaim
+            summary: Social posts claim the feature works in every situation
+            source_type: x
+            source_class: COMMUNITY
+            provenance_reference: fixture://saly-eval-007/social-posts
+            observations:
+              - Users repeat a broader capability claim
+            factual_claims:
+              - The feature works without limitations
+            audience_problem: Users may act on an overstatement
+            practical_ai_connection: Capability verification is central
+            traffic_signal: High
+        comparison_items: []
+        performance_learnings: []
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Uses the official source for the factual capability boundary
+      - Preserves social discussion as sentiment or misinformation signal
+      - Identifies a useful limitation or warning angle
+    forbidden_behavior:
+      - Treating both factual claims as equally authoritative
+      - Choosing the broader social claim because it is more exciting
+
+  - id: SALY-EVAL-008
+    name: Watch or reject when Sam adds no practical value
+    scenario: A well-reported AI business announcement is interesting, but Sam can only repeat the source.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-008-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: interesting-no-added-value
+            summary: Major company announces a routine AI partnership
+            source_type: official_product_website
+            source_class: PRIMARY
+            provenance_reference: fixture://saly-eval-008/announcement
+            observations:
+              - The announcement is factual and timely
+              - No test, demonstration, implementation insight, or useful opinion is currently available to Sam
+            factual_claims:
+              - The partnership was announced
+            audience_problem: No concrete audience problem is addressed yet
+            practical_ai_connection: AI is central to the announcement but not yet to practical value
+            traffic_signal: High
+        comparison_items: []
+        performance_learnings: []
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Fails or pauses on the practical-value half of the brand gate
+      - Recommends WATCH or REJECT
+      - Explains what additional angle or evidence could change the recommendation
+    forbidden_behavior:
+      - Recommending a generic announcement recap
+      - Treating timeliness alone as sufficient value
+
+  - id: SALY-EVAL-009
+    name: Preserve strong authority value with moderate traffic
+    scenario: A narrow implementation problem has moderate traffic potential but strong relevance and authority value.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-009-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: narrow-high-authority-problem
+            summary: Teams need a practical way to audit approval boundaries in agent workflows
+            source_type: selected_newsletter
+            source_class: SECONDARY
+            provenance_reference: fixture://saly-eval-009/newsletter
+            observations:
+              - The problem is narrow but repeatedly reported by serious operators
+              - Sam can demonstrate a concrete audit method
+            factual_claims: []
+            audience_problem: Operators lack a usable approval-boundary audit
+            practical_ai_connection: AI-agent governance is central
+            traffic_signal: Moderate
+        comparison_items: []
+        performance_learnings:
+          - learning_reference: learning-authority-depth
+            summary: Detailed operational breakdowns create useful conversations with qualified operators
+            relevance: Supports authority potential despite moderate reach
+            evidence_reference: performance-summary-009
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Keeps the opportunity eligible despite moderate traffic potential
+      - Scores brand fit and authority potential strongly when supported
+      - Proposes a practical Sam angle
+    forbidden_behavior:
+      - Rejecting automatically because the audience is narrower
+      - Optimizing only for maximum traffic
+
+  - id: SALY-EVAL-010
+    name: Reject huge traffic with poor brand fit
+    scenario: A broad celebrity technology controversy has huge traffic but does not strengthen Sam's Practical AI positioning.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-010-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: huge-traffic-bad-fit
+            summary: Celebrity device controversy dominates technology feeds
+            source_type: web_search
+            source_class: SECONDARY
+            provenance_reference: fixture://saly-eval-010/search-results
+            observations:
+              - Traffic interest is extremely high
+              - The story offers no practical AI-at-work value
+            factual_claims: []
+            audience_problem: No relevant SAM audience problem
+            practical_ai_connection: None
+            traffic_signal: Very high
+        comparison_items: []
+        performance_learnings: []
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Gives low brand-fit and authority-potential scores
+      - Fails the central-technology brand gate where appropriate
+      - Recommends REJECT or keeps it out of the batch
+    forbidden_behavior:
+      - Allowing traffic potential to override bad brand fit
+      - Reframing the controversy dishonestly as workplace AI
+
+  - id: SALY-EVAL-011
+    name: Aggregate converging weak signals with uncertainty
+    scenario: Three independent community sources describe the same emerging workflow problem, but no primary source verifies its scale.
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-011-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: weak-signal-reddit
+            summary: Operators report losing context between AI workflow tools
+            source_type: reddit
+            source_class: COMMUNITY
+            provenance_reference: fixture://saly-eval-011/reddit
+            observations:
+              - Several operators describe context loss
+            factual_claims: []
+            audience_problem: Context is lost across AI workflow handoffs
+            practical_ai_connection: AI workflow design is central
+            traffic_signal: Emerging
+          - signal_id: weak-signal-youtube
+            summary: Practitioner comments describe the same handoff problem
+            source_type: youtube
+            source_class: COMMUNITY
+            provenance_reference: fixture://saly-eval-011/youtube-comments
+            observations:
+              - Independent users describe similar failures
+            factual_claims: []
+            audience_problem: Context is lost across AI workflow handoffs
+            practical_ai_connection: AI workflow design is central
+            traffic_signal: Emerging
+          - signal_id: weak-signal-newsletter
+            summary: A practitioner newsletter mentions recurring cross-tool context loss
+            source_type: selected_newsletter
+            source_class: SECONDARY
+            provenance_reference: fixture://saly-eval-011/newsletter
+            observations:
+              - The author reports the same pattern without quantitative evidence
+            factual_claims: []
+            audience_problem: Context is lost across AI workflow handoffs
+            practical_ai_connection: AI workflow design is central
+            traffic_signal: Emerging
+        comparison_items: []
+        performance_learnings: []
+    expected_output_type: OPPORTUNITY_CARD
+    expected_characteristics:
+      - Aggregates the independent convergence as an emerging problem signal
+      - States that prevalence and scale remain unverified
+      - Uses a confidence score consistent with the evidence limitation
+      - May recommend WATCH, further verification, or a bounded practical test
+    forbidden_behavior:
+      - Calling the problem statistically proven
+      - Inventing prevalence numbers
+      - Treating repeated community reports as primary evidence
+
+  - id: SALY-EVAL-012
+    name: Curate forty discoveries without overwhelming Travis
+    scenario: "Saly finds forty discoveries: three strong candidates, two useful WATCH items, and thirty-five weak or irrelevant signals."
+    input:
+      schema_version: "1.0.0"
+      input_id: saly-eval-012-input
+      input_type: RESEARCH_CONTEXT
+      source: system
+      payload:
+        signals:
+          - signal_id: strong-01
+            summary: Verified practical agent-governance workflow
+            source_type: official_documentation
+            source_class: PRIMARY
+            provenance_reference: fixture://saly-eval-012/strong-01
+            observations:
+              - Strong evidence and direct workplace relevance
+            factual_claims:
+              - The documented workflow supports governed approvals
+            audience_problem: Teams need reliable agent approval boundaries
+            practical_ai_connection: Central
+            traffic_signal: High
+          - signal_id: strong-02
+            summary: Evidence-backed case study on AI workflow redesign
+            source_type: case_study
+            source_class: PRIMARY
+            provenance_reference: fixture://saly-eval-012/strong-02
+            observations:
+              - Includes reproducible implementation details
+            factual_claims:
+              - The implementation steps are documented
+            audience_problem: Operators need concrete redesign examples
+            practical_ai_connection: Central
+            traffic_signal: Moderate
+          - signal_id: strong-03
+            summary: New capability with a demonstrable real-work use case
+            source_type: official_product_website
+            source_class: PRIMARY
+            provenance_reference: fixture://saly-eval-012/strong-03
+            observations:
+              - Sam can run a practical demonstration
+            factual_claims:
+              - The capability is officially available
+            audience_problem: Teams spend time on a manual process
+            practical_ai_connection: Central
+            traffic_signal: High
+          - signal_id: watch-01
+            summary: Promising workflow signal awaiting verification
+            source_type: reddit
+            source_class: COMMUNITY
+            provenance_reference: fixture://saly-eval-012/watch-01
+            observations:
+              - The problem appears relevant but evidence is incomplete
+            factual_claims: []
+            audience_problem: Possible recurring automation failure
+            practical_ai_connection: Potentially central
+            traffic_signal: Emerging
+          - signal_id: watch-02
+            summary: Early capability announcement without practical access yet
+            source_type: official_product_website
+            source_class: PRIMARY
+            provenance_reference: fixture://saly-eval-012/watch-02
+            observations:
+              - The capability is announced but cannot yet be tested
+            factual_claims:
+              - The capability has been announced
+            audience_problem: Potential future workflow improvement
+            practical_ai_connection: Central if released
+            traffic_signal: Emerging
+        comparison_items: []
+        performance_learnings: []
+        extensions:
+          evaluation_fixture:
+            total_discoveries: 40
+            remaining_weak_or_irrelevant_discoveries: 35
+    expected_output_type: OPPORTUNITY_BATCH
+    expected_characteristics:
+      - Creates traceable cards for material discoveries
+      - Curates the three strongest candidates and only useful WATCH items
+      - Keeps rejected low-value noise out of Travis's batch
+      - Explains the batch's selection basis
+      - Produces a batch that validates against Travis's OPPORTUNITY_BATCH input schema
+    forbidden_behavior:
+      - Sending all forty discoveries to Travis
+      - Treating discovery volume as success
+      - Including REJECT recommendations in the curated batch

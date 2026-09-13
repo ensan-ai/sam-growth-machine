@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/lara/schemas/input.schema.json",
+  "title": "Lara Input Contract — Phase 2G",
+  "description": "Strict evidence inputs for Lara's reviewable Performance & Learning Analyst definition. This schema does not authorize retrieval or execution.",
+  "oneOf": [
+    {"$ref": "#/$defs/publicationRecord"},
+    {"$ref": "#/$defs/performanceSnapshot"},
+    {"$ref": "#/$defs/contentContext"},
+    {"$ref": "#/$defs/priorPerformanceContext"},
+    {"$ref": "#/$defs/samOrTravisQuestion"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Controlled namespaced extension point. Keys should identify a provider or owning contract.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9._-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "platform": {
+      "$ref": "https://sam-growth-machine.local/agents/maro/schemas/output.schema.json#/$defs/platformId"
+    },
+    "dataQuality": {
+      "enum": ["COMPLETE", "PARTIAL", "STALE", "INCONSISTENT", "UNAVAILABLE"]
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "rationale"],
+      "properties": {
+        "level": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    },
+    "analysisWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "ended_at", "maturity"],
+      "properties": {
+        "started_at": {"type": "string", "format": "date-time"},
+        "ended_at": {"type": "string", "format": "date-time"},
+        "maturity": {"enum": ["EARLY", "INTERMEDIATE", "MATURE"]}
+      }
+    },
+    "metricObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric_name", "signal_family", "value", "unit", "provider_definition", "source_reference", "data_quality"],
+      "properties": {
+        "metric_name": {"type": "string", "minLength": 1},
+        "signal_family": {"enum": ["DISCOVERY_REACH", "ATTENTION", "ENGAGEMENT_QUALITY", "AUDIENCE_QUALITY", "AUTHORITY_BUSINESS_INTEREST", "PROVIDER_SPECIFIC"]},
+        "value": {"type": ["number", "string", "boolean"]},
+        "unit": {"type": "string", "minLength": 1},
+        "provider_definition": {"type": ["string", "null"]},
+        "source_reference": {"type": "string", "minLength": 1},
+        "data_quality": {"$ref": "#/$defs/dataQuality"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "sourceProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_type", "source_locator", "provider", "retrieved_at"],
+      "properties": {
+        "source_type": {"enum": ["PLATFORM_ANALYTICS", "WEBSITE_ANALYTICS", "APPROVED_DATASET", "MANUAL_VERIFIED", "DERIVED"]},
+        "source_locator": {"type": "string", "minLength": 1},
+        "provider": {"type": ["string", "null"]},
+        "retrieved_at": {"type": ["string", "null"], "format": "date-time"},
+        "notes": {"type": ["string", "null"]}
+      }
+    },
+    "artifactBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "artifact_id", "schema_id", "binding_role"],
+      "properties": {
+        "artifact_type": {"enum": ["CONTENT_BRIEF", "CONTENT_DRAFT", "CREATIVE_PACKAGE", "PUBLICATION_RECEIPT", "DISTRIBUTION_RESULT"]},
+        "artifact_id": {"type": "string", "minLength": 1},
+        "schema_id": {
+          "enum": [
+            "https://sam-growth-machine.local/agents/adam/schemas/output.schema.json",
+            "https://sam-growth-machine.local/agents/brain/schemas/output.schema.json",
+            "https://sam-growth-machine.local/agents/jax/schemas/output.schema.json",
+            "https://sam-growth-machine.local/agents/maro/schemas/output.schema.json"
+          ]
+        },
+        "binding_role": {"enum": ["STRATEGY", "CONTENT", "CREATIVE", "PUBLICATION", "DISTRIBUTION"]}
+      }
+    },
+    "publicationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "PUBLICATION_RECORD"},
+        "source": {"enum": ["maro", "system"]},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["publication_record_id", "publication_receipt_reference", "distribution_result_reference", "platform", "published_content_identifier", "publication_time", "content_version", "approval_reference", "publication_status", "status_certainty", "publish_package_reference", "source_references"],
+          "properties": {
+            "publication_record_id": {"type": "string", "minLength": 1},
+            "publication_receipt_reference": {"type": ["string", "null"]},
+            "distribution_result_reference": {"type": ["string", "null"]},
+            "platform": {"$ref": "#/$defs/platform"},
+            "published_content_identifier": {"type": ["string", "null"]},
+            "publication_time": {"type": ["string", "null"], "format": "date-time"},
+            "content_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+            "approval_reference": {"type": "string", "minLength": 1},
+            "publication_status": {"enum": ["SCHEDULED", "PUBLISHING", "PUBLISHED", "PARTIAL_FAILURE", "FAILED", "BLOCKED", "CANCELLED", "AMBIGUOUS"]},
+            "status_certainty": {"enum": ["CONFIRMED", "AMBIGUOUS"]},
+            "publish_package_reference": {"type": "string", "minLength": 1},
+            "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          },
+          "anyOf": [
+            {"properties": {"publication_receipt_reference": {"type": "string", "minLength": 1}}},
+            {"properties": {"distribution_result_reference": {"type": "string", "minLength": 1}}}
+          ],
+          "allOf": [
+            {
+              "if": {"properties": {"publication_status": {"const": "PUBLISHED"}}, "required": ["publication_status"]},
+              "then": {"properties": {"publication_time": {"type": "string", "format": "date-time"}, "status_certainty": {"const": "CONFIRMED"}}}
+            },
+            {
+              "if": {"properties": {"status_certainty": {"const": "AMBIGUOUS"}}, "required": ["status_certainty"]},
+              "then": {"properties": {"publication_status": {"const": "AMBIGUOUS"}}}
+            }
+          ]
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "performanceSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "PERFORMANCE_SNAPSHOT"},
+        "source": {"enum": ["platform_analytics", "website_analytics", "approved_dataset", "system"]},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["snapshot_id", "publication_reference", "platform", "measurement_window", "metrics", "data_completeness", "source_provenance", "retrieval_status", "missing_fields", "provider_metrics"],
+          "properties": {
+            "snapshot_id": {"type": "string", "minLength": 1},
+            "publication_reference": {"type": "string", "minLength": 1},
+            "platform": {"$ref": "#/$defs/platform"},
+            "measurement_window": {"$ref": "#/$defs/analysisWindow"},
+            "metrics": {"type": "array", "items": {"$ref": "#/$defs/metricObservation"}},
+            "data_completeness": {"$ref": "#/$defs/dataQuality"},
+            "source_provenance": {"type": "array", "items": {"$ref": "#/$defs/sourceProvenance"}, "minItems": 1},
+            "retrieval_status": {"enum": ["SUCCESS", "PARTIAL", "FAILED", "NOT_AVAILABLE"]},
+            "missing_fields": {"$ref": "#/$defs/stringArray"},
+            "provider_metrics": {"$ref": "#/$defs/extensions"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"retrieval_status": {"enum": ["FAILED", "NOT_AVAILABLE"]}}, "required": ["retrieval_status"]},
+              "then": {"properties": {"metrics": {"maxItems": 0}, "data_completeness": {"const": "UNAVAILABLE"}}}
+            },
+            {
+              "if": {"properties": {"retrieval_status": {"const": "PARTIAL"}}, "required": ["retrieval_status"]},
+              "then": {"properties": {"data_completeness": {"enum": ["PARTIAL", "STALE", "INCONSISTENT"]}, "missing_fields": {"minItems": 1}}}
+            }
+          ]
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "contentContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "CONTENT_CONTEXT"},
+        "source": {"enum": ["adam", "brain", "jax", "system"]},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["context_id", "content_references", "authoritative_artifact_bindings", "content_role", "strategic_objective", "target_audience", "success_signals", "format", "platforms", "proof_or_demo_pattern", "hook", "creative_treatment", "source_references"],
+          "properties": {
+            "context_id": {"type": "string", "minLength": 1},
+            "content_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+            "authoritative_artifact_bindings": {"type": "array", "items": {"$ref": "#/$defs/artifactBinding"}, "minItems": 1},
+            "content_role": {"enum": ["REACH", "AUTHORITY", "BOTH"]},
+            "strategic_objective": {"type": "string", "minLength": 1},
+            "target_audience": {"type": "string", "minLength": 1},
+            "success_signals": {"$ref": "#/$defs/nonEmptyStringArray"},
+            "format": {"enum": ["SHORT_VIDEO", "LINKEDIN_POST", "X_POST", "X_THREAD", "FACEBOOK_POST", "OTHER"]},
+            "platforms": {"type": "array", "items": {"$ref": "#/$defs/platform"}, "minItems": 1, "uniqueItems": true},
+            "proof_or_demo_pattern": {"type": ["string", "null"]},
+            "hook": {"type": ["string", "null"]},
+            "creative_treatment": {"type": ["string", "null"]},
+            "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "comparableItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publication_reference", "content_reference", "platform", "format", "content_role", "target_audience", "topic", "measurement_window", "metrics", "data_quality", "source_references"],
+      "properties": {
+        "publication_reference": {"type": "string", "minLength": 1},
+        "content_reference": {"type": "string", "minLength": 1},
+        "platform": {"$ref": "#/$defs/platform"},
+        "format": {"enum": ["SHORT_VIDEO", "LINKEDIN_POST", "X_POST", "X_THREAD", "FACEBOOK_POST", "OTHER"]},
+        "content_role": {"enum": ["REACH", "AUTHORITY", "BOTH"]},
+        "target_audience": {"type": "string", "minLength": 1},
+        "topic": {"type": ["string", "null"]},
+        "measurement_window": {"$ref": "#/$defs/analysisWindow"},
+        "metrics": {"type": "array", "items": {"$ref": "#/$defs/metricObservation"}, "minItems": 1},
+        "data_quality": {"$ref": "#/$defs/dataQuality"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"}
+      }
+    },
+    "experimentContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["experiment_id", "hypothesis", "compared_conditions", "success_criteria_reference", "setup_quality", "known_confounders"],
+      "properties": {
+        "experiment_id": {"type": "string", "minLength": 1},
+        "hypothesis": {"type": "string", "minLength": 1},
+        "compared_conditions": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "success_criteria_reference": {"type": "string", "minLength": 1},
+        "setup_quality": {"enum": ["STRONG", "LIMITED", "WEAK"]},
+        "known_confounders": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "priorPerformanceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "PRIOR_PERFORMANCE_CONTEXT"},
+        "source": {"enum": ["lara", "travis", "approved_dataset", "system"]},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["context_id", "baseline_reference", "comparable_items", "comparison_purpose", "experiment_context", "source_references"],
+          "properties": {
+            "context_id": {"type": "string", "minLength": 1},
+            "baseline_reference": {"type": ["string", "null"]},
+            "comparable_items": {"type": "array", "items": {"$ref": "#/$defs/comparableItem"}},
+            "comparison_purpose": {"type": "string", "minLength": 1},
+            "experiment_context": {"oneOf": [{"$ref": "#/$defs/experimentContext"}, {"type": "null"}]},
+            "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "samOrTravisQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "SAM_OR_TRAVIS_QUESTION"},
+        "source": {"enum": ["sam", "travis"]},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_id", "question", "analysis_window", "content_references", "platforms", "decision_requested", "source_references"],
+          "properties": {
+            "question_id": {"type": "string", "minLength": 1},
+            "question": {"type": "string", "minLength": 1},
+            "analysis_window": {"oneOf": [{"$ref": "#/$defs/analysisWindow"}, {"type": "null"}]},
+            "content_references": {"$ref": "#/$defs/stringArray"},
+            "platforms": {"type": "array", "items": {"$ref": "#/$defs/platform"}, "uniqueItems": true},
+            "decision_requested": {"type": "boolean", "description": "True records that the requester asked for a decision; it does not grant Lara decision authority."},
+            "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    }
+  }
+}

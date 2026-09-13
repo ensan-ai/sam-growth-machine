@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/adam/schemas/input.schema.json",
+  "title": "Adam Input Contract",
+  "description": "Strict Phase 2C assignment and strategic-context inputs. No runtime handoff implementation is implied.",
+  "oneOf": [
+    {"$ref": "#/$defs/assignment"},
+    {"$ref": "#/$defs/opportunityContext"},
+    {"$ref": "#/$defs/performanceContext"},
+    {"$ref": "#/$defs/samDirection"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "approvalRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "approver", "reason"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "approver": {"enum": ["sam", null]},
+        "reason": {"type": ["string", "null"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"required": {"const": true}}},
+          "then": {
+            "properties": {
+              "approver": {"const": "sam"},
+              "reason": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      ]
+    },
+    "assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_id",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "recipient",
+        "objective",
+        "source_artifact_reference",
+        "expected_deliverable",
+        "priority",
+        "deadline_or_window",
+        "success_condition",
+        "approval_requirement",
+        "context"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_id": {"type": "string", "minLength": 1},
+        "artifact_type": {"const": "ASSIGNMENT"},
+        "created_by": {"const": "travis"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "recipient": {"const": "adam"},
+        "objective": {"type": "string", "minLength": 1},
+        "source_artifact_reference": {"type": "string", "minLength": 1},
+        "expected_deliverable": {"type": "string", "minLength": 1},
+        "priority": {"type": "string", "minLength": 1},
+        "deadline_or_window": {"type": ["string", "null"]},
+        "success_condition": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Together with objective, this supplies Adam's minimum expected-outcome signal without changing Travis's existing interface."
+        },
+        "approval_requirement": {"$ref": "#/$defs/approvalRequirement"},
+        "context": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "salyOpportunityCard": {
+      "type": "object",
+      "description": "Must be validated against Saly's versioned OPPORTUNITY_CARD schema before handoff. This projection asserts the fields Adam requires while permitting the complete upstream artifact.",
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "opportunity_id",
+        "title",
+        "discovery_category",
+        "signal_summary",
+        "why_now",
+        "target_audience_problem",
+        "practical_ai_connection",
+        "proposed_sam_angle",
+        "evidence",
+        "sources",
+        "suggested_formats",
+        "suggested_platforms",
+        "brand_fit_score",
+        "authority_potential",
+        "production_difficulty",
+        "duplicate_risk",
+        "confidence",
+        "brand_relevance_gate",
+        "semantic_duplicate_check",
+        "recommendation",
+        "reasoning"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "OPPORTUNITY_CARD"},
+        "created_by": {"const": "saly"},
+        "opportunity_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "discovery_category": {"type": "string", "minLength": 1},
+        "signal_summary": {"type": "string", "minLength": 1},
+        "why_now": {"type": "string", "minLength": 1},
+        "target_audience_problem": {"type": "string", "minLength": 1},
+        "practical_ai_connection": {"type": "string", "minLength": 1},
+        "proposed_sam_angle": {"type": "string", "minLength": 1},
+        "evidence": {"type": "array", "items": {"type": "object"}, "minItems": 1},
+        "sources": {"type": "array", "items": {"type": "object"}, "minItems": 1},
+        "suggested_formats": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "suggested_platforms": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "brand_fit_score": {"type": "integer", "minimum": 1, "maximum": 5},
+        "authority_potential": {"type": "integer", "minimum": 1, "maximum": 5},
+        "production_difficulty": {"type": "integer", "minimum": 1, "maximum": 5},
+        "duplicate_risk": {"type": "integer", "minimum": 1, "maximum": 5},
+        "confidence": {"type": "integer", "minimum": 1, "maximum": 5},
+        "brand_relevance_gate": {
+          "type": "object",
+          "required": ["ai_automation_or_technology_central", "sam_adds_practical_value", "result", "reasoning"]
+        },
+        "semantic_duplicate_check": {
+          "type": "object",
+          "required": ["assessment", "reasoning"]
+        },
+        "recommendation": {"enum": ["PURSUE_CANDIDATE", "WATCH", "REJECT"]},
+        "reasoning": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    },
+    "opportunityContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "OPPORTUNITY_CONTEXT"},
+        "source": {"enum": ["saly", "system"]},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["opportunity_card", "selected_reason", "known_constraints"],
+          "properties": {
+            "opportunity_card": {"$ref": "#/$defs/salyOpportunityCard"},
+            "selected_reason": {"type": "string", "minLength": 1},
+            "known_constraints": {"$ref": "#/$defs/stringArray"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "performanceLearning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["learning_reference", "observation", "strategic_implication"],
+      "properties": {
+        "learning_reference": {"type": "string", "minLength": 1},
+        "observation": {"type": "string", "minLength": 1},
+        "strategic_implication": {"type": "string", "minLength": 1},
+        "evidence_reference": {"type": ["string", "null"]},
+        "limitations": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "performanceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "PERFORMANCE_CONTEXT"},
+        "source": {"const": "system"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["context_reference", "learnings", "limitations"],
+          "properties": {
+            "context_reference": {"type": "string", "minLength": 1},
+            "learnings": {"type": "array", "items": {"$ref": "#/$defs/performanceLearning"}, "minItems": 1},
+            "limitations": {"$ref": "#/$defs/stringArray"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "samDirection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "SAM_DIRECTION"},
+        "source": {"const": "sam"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["direction", "constraints"],
+          "properties": {
+            "direction": {"type": "string", "minLength": 1},
+            "constraints": {"$ref": "#/$defs/stringArray"},
+            "applies_to_reference": {"type": ["string", "null"]},
+            "rationale": {"type": ["string", "null"]},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    }
+  }
+}

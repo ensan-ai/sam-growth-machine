@@ -1,0 +1,99 @@
+mod db;
+mod definitions;
+mod models;
+mod orchestrator;
+mod providers;
+mod router;
+mod runner;
+mod schema_fixture;
+
+use db::Database;
+use definitions::{repository_root, DefinitionStore};
+use models::*;
+use orchestrator::RuntimeService;
+use tauri::{Manager, State};
+
+#[tauri::command]
+async fn get_dashboard(service: State<'_, RuntimeService>) -> Result<Dashboard, String> {
+    service.dashboard().await
+}
+
+#[tauri::command]
+fn get_team(service: State<'_, RuntimeService>) -> Result<Vec<EmployeeSummary>, String> {
+    service.db.employees()
+}
+
+#[tauri::command]
+fn get_work_items(service: State<'_, RuntimeService>) -> Result<Vec<WorkItemSummary>, String> {
+    service.db.work_items()
+}
+
+#[tauri::command]
+fn get_work_item(work_item_id: String, service: State<'_, RuntimeService>) -> Result<WorkItemDetail, String> {
+    service.db.detail(&work_item_id)
+}
+
+#[tauri::command]
+fn get_approvals(service: State<'_, RuntimeService>) -> Result<Vec<ApprovalRecord>, String> {
+    service.db.approvals(None)
+}
+
+#[tauri::command]
+fn get_activity(service: State<'_, RuntimeService>) -> Result<serde_json::Value, String> {
+    Ok(serde_json::json!({"runs": service.db.runs(None)?, "events": service.db.events(None)?}))
+}
+
+#[tauri::command]
+fn get_settings(service: State<'_, RuntimeService>) -> Result<RuntimeSettings, String> {
+    service.db.settings()
+}
+
+#[tauri::command]
+fn save_settings(request: SaveSettingsRequest, service: State<'_, RuntimeService>) -> Result<RuntimeSettings, String> {
+    service.db.save_settings(&request)
+}
+
+#[tauri::command]
+async fn check_providers(service: State<'_, RuntimeService>) -> Result<ProviderStatus, String> {
+    service.provider_status().await
+}
+
+#[tauri::command]
+fn start_work_item(request: StartWorkItemRequest, service: State<'_, RuntimeService>) -> Result<WorkItemSummary, String> {
+    service.start(request)
+}
+
+#[tauri::command]
+async fn run_work_item(work_item_id: String, service: State<'_, RuntimeService>) -> Result<WorkItemDetail, String> {
+    service.advance_until_blocked(&work_item_id, false).await
+}
+
+#[tauri::command]
+async fn decide_approval(decision: ApprovalDecision, service: State<'_, RuntimeService>) -> Result<WorkItemDetail, String> {
+    service.approval(decision, false).await
+}
+
+#[tauri::command]
+fn company_control(request: ControlRequest, service: State<'_, RuntimeService>) -> Result<RuntimeSettings, String> {
+    service.control(request)
+}
+
+pub fn run() {
+    tauri::Builder::default()
+        .setup(|app| {
+            let root = repository_root().map_err(|e| Box::<dyn std::error::Error>::from(e))?;
+            let definitions = DefinitionStore::load(&root).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
+            let data_dir = app.path().app_data_dir()?;
+            let database = Database::new(data_dir.join("sam-neural-core.sqlite3")).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
+            let service = RuntimeService::new(database, definitions).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
+            app.manage(service);
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            get_dashboard, get_team, get_work_items, get_work_item, get_approvals,
+            get_activity, get_settings, save_settings, check_providers,
+            start_work_item, run_work_item, decide_approval, company_control
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running SAM Neural Core");
+}

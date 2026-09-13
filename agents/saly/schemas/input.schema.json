@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/saly/schemas/input.schema.json",
+  "title": "Saly Input Contract",
+  "description": "Strict Phase 2B research, comparison, and monitoring inputs. These are interfaces only; no research integration is implemented.",
+  "oneOf": [
+    {"$ref": "#/$defs/researchAssignment"},
+    {"$ref": "#/$defs/researchContext"},
+    {"$ref": "#/$defs/monitoringUpdate"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "researchAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "RESEARCH_ASSIGNMENT"},
+        "source": {"const": "travis"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["objective", "research_window", "focus_categories", "audience_context", "constraints"],
+          "properties": {
+            "objective": {"type": "string", "minLength": 1},
+            "research_window": {"type": ["string", "null"]},
+            "focus_categories": {"$ref": "#/$defs/stringArray"},
+            "audience_context": {"type": "string", "minLength": 1},
+            "constraints": {"$ref": "#/$defs/stringArray"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "sourceSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal_id",
+        "summary",
+        "source_type",
+        "source_class",
+        "provenance_reference",
+        "observations",
+        "audience_problem",
+        "practical_ai_connection"
+      ],
+      "properties": {
+        "signal_id": {"type": "string", "minLength": 1},
+        "summary": {"type": "string", "minLength": 1},
+        "source_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Configurable source-type identifier; no API or provider is implied."
+        },
+        "source_class": {"enum": ["PRIMARY", "COMMUNITY", "SECONDARY", "INTERNAL"]},
+        "provenance_reference": {"type": "string", "minLength": 1},
+        "observations": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "factual_claims": {"$ref": "#/$defs/stringArray"},
+        "audience_problem": {"type": "string", "minLength": 1},
+        "practical_ai_connection": {"type": "string", "minLength": 1},
+        "traffic_signal": {"type": ["string", "null"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "comparisonItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content_reference",
+        "status",
+        "work_situation",
+        "audience_problem",
+        "core_takeaway",
+        "demonstration_pattern",
+        "practical_conclusion"
+      ],
+      "properties": {
+        "content_reference": {"type": "string", "minLength": 1},
+        "status": {"enum": ["PUBLISHED", "PLANNED", "REJECTED", "RECENT_RESEARCH"]},
+        "work_situation": {"type": "string", "minLength": 1},
+        "audience_problem": {"type": "string", "minLength": 1},
+        "core_takeaway": {"type": "string", "minLength": 1},
+        "demonstration_pattern": {"type": "string", "minLength": 1},
+        "practical_conclusion": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "performanceLearning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["learning_reference", "summary", "relevance"],
+      "properties": {
+        "learning_reference": {"type": "string", "minLength": 1},
+        "summary": {"type": "string", "minLength": 1},
+        "relevance": {"type": "string", "minLength": 1},
+        "evidence_reference": {"type": ["string", "null"]},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "researchContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "RESEARCH_CONTEXT"},
+        "source": {"const": "system"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["signals", "comparison_items", "performance_learnings"],
+          "properties": {
+            "signals": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/sourceSignal"}
+            },
+            "comparison_items": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/comparisonItem"}
+            },
+            "performance_learnings": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/performanceLearning"}
+            },
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "monitoringUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "input_id", "input_type", "source", "payload"],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "input_id": {"type": "string", "minLength": 1},
+        "input_type": {"const": "MONITORING_UPDATE"},
+        "source": {"const": "system"},
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["opportunity_reference", "change_summary", "new_evidence", "new_source_references"],
+          "properties": {
+            "opportunity_reference": {"type": "string", "minLength": 1},
+            "change_summary": {"type": "string", "minLength": 1},
+            "new_evidence": {"$ref": "#/$defs/stringArray"},
+            "new_source_references": {"$ref": "#/$defs/stringArray"},
+            "extensions": {"$ref": "#/$defs/extensions"}
+          }
+        },
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    }
+  }
+}

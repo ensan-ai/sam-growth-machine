@@ -1,0 +1,382 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/adam/schemas/output.schema.json",
+  "title": "Adam Output Contract",
+  "description": "Strict, extensible Phase 2C content strategy artifacts. These artifacts do not contain final copy or final creative execution.",
+  "oneOf": [
+    {"$ref": "#/$defs/contentBrief"},
+    {"$ref": "#/$defs/repurposingMap"},
+    {"$ref": "#/$defs/strategicConcern"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assessment", "basis"],
+      "properties": {
+        "assessment": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Qualitative assessment; exact taxonomy remains unresolved."
+        },
+        "basis": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "formatSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "extension"],
+      "properties": {
+        "type": {
+          "enum": ["SHORT_VIDEO", "LINKEDIN_POST", "X_POST", "X_THREAD", "FACEBOOK_POST", "OTHER"]
+        },
+        "extension": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "OTHER"}}, "required": ["type"]},
+          "then": {"properties": {"extension": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    },
+    "platformArray": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "Instagram Reels",
+          "TikTok",
+          "YouTube Shorts",
+          "Facebook Reels",
+          "LinkedIn",
+          "X",
+          "Facebook Feed"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "evidenceRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirement_id", "requirement", "mandatory", "source_references"],
+      "properties": {
+        "requirement_id": {"type": "string", "minLength": 1},
+        "requirement": {"type": "string", "minLength": 1},
+        "mandatory": {"type": "boolean"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "adaptationIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "depth", "framing", "context", "cta_objective"],
+      "properties": {
+        "platform": {
+          "enum": [
+            "Instagram Reels",
+            "TikTok",
+            "YouTube Shorts",
+            "Facebook Reels",
+            "LinkedIn",
+            "X",
+            "Facebook Feed"
+          ]
+        },
+        "depth": {"type": "string", "minLength": 1},
+        "framing": {"type": "string", "minLength": 1},
+        "context": {"type": "string", "minLength": 1},
+        "cta_objective": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "repurposingStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "core_insight_to_preserve", "adaptation_intents", "identical_copy_allowed"],
+      "properties": {
+        "mode": {"enum": ["SINGLE_ASSET", "REPURPOSE"]},
+        "core_insight_to_preserve": {"type": "string", "minLength": 1},
+        "adaptation_intents": {"type": "array", "items": {"$ref": "#/$defs/adaptationIntent"}},
+        "identical_copy_allowed": {"const": false},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "creativeRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "creative_objective",
+        "proof_or_demo_requirement",
+        "required_assets",
+        "platform_context",
+        "visual_constraints"
+      ],
+      "properties": {
+        "creative_objective": {"type": "string", "minLength": 1},
+        "proof_or_demo_requirement": {"type": "string", "minLength": 1},
+        "required_assets": {"$ref": "#/$defs/stringArray"},
+        "platform_context": {"type": "string", "minLength": 1},
+        "visual_constraints": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "writingRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "structure_direction",
+        "must_include",
+        "must_avoid",
+        "source_references",
+        "do_not_invent_strategy"
+      ],
+      "properties": {
+        "structure_direction": {"type": "string", "minLength": 1},
+        "must_include": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "must_avoid": {"$ref": "#/$defs/stringArray"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "do_not_invent_strategy": {"const": true},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "qualityGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "positioning_fit",
+        "audience_problem_clear",
+        "takeaway_specific",
+        "sam_adds_unique_value",
+        "non_duplicate_angle",
+        "format_matches_idea",
+        "evidence_requirements_clear",
+        "intended_outcome_clear",
+        "reason_beyond_quota",
+        "reasoning"
+      ],
+      "properties": {
+        "positioning_fit": {"const": true},
+        "audience_problem_clear": {"const": true},
+        "takeaway_specific": {"const": true},
+        "sam_adds_unique_value": {"const": true},
+        "non_duplicate_angle": {"const": true},
+        "format_matches_idea": {"const": true},
+        "evidence_requirements_clear": {"const": true},
+        "intended_outcome_clear": {"const": true},
+        "reason_beyond_quota": {"const": true},
+        "reasoning": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "contentBrief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "brief_id",
+        "source_assignment_id",
+        "source_opportunity_id",
+        "working_title",
+        "target_audience",
+        "audience_problem",
+        "strategic_objective",
+        "content_role",
+        "core_idea",
+        "core_takeaway",
+        "sam_unique_angle",
+        "why_this_matters_now",
+        "evidence_requirements",
+        "demonstration_pattern",
+        "format",
+        "target_platforms",
+        "repurposing_strategy",
+        "hook_direction",
+        "key_points",
+        "limitation_or_caveat",
+        "cta_objective",
+        "creative_requirements",
+        "writing_requirements",
+        "success_signals",
+        "priority",
+        "confidence",
+        "risks",
+        "source_references",
+        "quality_gate"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "CONTENT_BRIEF"},
+        "created_by": {"const": "adam"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "brief_id": {"type": "string", "minLength": 1},
+        "source_assignment_id": {"type": "string", "minLength": 1},
+        "source_opportunity_id": {"type": "string", "minLength": 1},
+        "working_title": {"type": "string", "minLength": 1},
+        "target_audience": {"type": "string", "minLength": 1},
+        "audience_problem": {"type": "string", "minLength": 1},
+        "strategic_objective": {"type": "string", "minLength": 1},
+        "content_role": {"enum": ["REACH", "AUTHORITY", "BOTH"]},
+        "core_idea": {"type": "string", "minLength": 1},
+        "core_takeaway": {"type": "string", "minLength": 1},
+        "sam_unique_angle": {"type": "string", "minLength": 1},
+        "why_this_matters_now": {"type": "string", "minLength": 1},
+        "evidence_requirements": {"type": "array", "items": {"$ref": "#/$defs/evidenceRequirement"}, "minItems": 1},
+        "demonstration_pattern": {"type": "string", "minLength": 1},
+        "format": {"$ref": "#/$defs/formatSelection"},
+        "target_platforms": {"$ref": "#/$defs/platformArray"},
+        "repurposing_strategy": {"$ref": "#/$defs/repurposingStrategy"},
+        "hook_direction": {"type": "string", "minLength": 1},
+        "key_points": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "limitation_or_caveat": {"type": ["string", "null"]},
+        "cta_objective": {"type": "string", "minLength": 1},
+        "creative_requirements": {"$ref": "#/$defs/creativeRequirements"},
+        "writing_requirements": {"$ref": "#/$defs/writingRequirements"},
+        "success_signals": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "priority": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Inherited or interpreted priority label; exact taxonomy remains unresolved."
+        },
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "risks": {"$ref": "#/$defs/stringArray"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "quality_gate": {"$ref": "#/$defs/qualityGate"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "masterAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["brief_reference", "format", "target_platforms"],
+      "properties": {
+        "brief_reference": {"type": "string", "minLength": 1},
+        "format": {"$ref": "#/$defs/formatSelection"},
+        "target_platforms": {"$ref": "#/$defs/platformArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "repurposedAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adaptation_id",
+        "format",
+        "target_platforms",
+        "depth",
+        "framing",
+        "context",
+        "cta_objective",
+        "distinct_value"
+      ],
+      "properties": {
+        "adaptation_id": {"type": "string", "minLength": 1},
+        "format": {"$ref": "#/$defs/formatSelection"},
+        "target_platforms": {"$ref": "#/$defs/platformArray"},
+        "depth": {"type": "string", "minLength": 1},
+        "framing": {"type": "string", "minLength": 1},
+        "context": {"type": "string", "minLength": 1},
+        "cta_objective": {"type": "string", "minLength": 1},
+        "distinct_value": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "repurposingMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "map_id",
+        "source_opportunity_id",
+        "core_insight_to_preserve",
+        "master_asset",
+        "adaptations",
+        "identical_copy_allowed",
+        "reasoning"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "REPURPOSING_MAP"},
+        "created_by": {"const": "adam"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "map_id": {"type": "string", "minLength": 1},
+        "source_opportunity_id": {"type": "string", "minLength": 1},
+        "core_insight_to_preserve": {"type": "string", "minLength": 1},
+        "master_asset": {"$ref": "#/$defs/masterAsset"},
+        "adaptations": {"type": "array", "items": {"$ref": "#/$defs/repurposedAsset"}, "minItems": 1},
+        "identical_copy_allowed": {"const": false},
+        "reasoning": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "strategicConcern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "concern_id",
+        "source_assignment_id",
+        "source_opportunity_id",
+        "destination",
+        "concern_type",
+        "evidence",
+        "reasoning",
+        "recommended_resolution",
+        "blocks_production"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "STRATEGIC_CONCERN"},
+        "created_by": {"const": "adam"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "concern_id": {"type": "string", "minLength": 1},
+        "source_assignment_id": {"type": "string", "minLength": 1},
+        "source_opportunity_id": {"type": "string", "minLength": 1},
+        "destination": {"enum": ["travis", "brain", "jax"]},
+        "concern_type": {
+          "enum": [
+            "WEAK_OPPORTUNITY",
+            "INSUFFICIENT_EVIDENCE",
+            "DUPLICATE_ANGLE",
+            "CONFLICTING_STRATEGIC_DIRECTION",
+            "UNCLEAR_SAM_DIRECTION",
+            "CAPACITY_TARGET_CONFLICT",
+            "DOWNSTREAM_STRATEGIC_MISALIGNMENT"
+          ]
+        },
+        "evidence": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "reasoning": {"type": "string", "minLength": 1},
+        "recommended_resolution": {"type": "string", "minLength": 1},
+        "blocks_production": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    }
+  }
+}

@@ -1,0 +1,616 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/agents/jax/schemas/output.schema.json",
+  "title": "Jax Output Contract",
+  "description": "Strict, extensible Phase 2E creative-planning artifacts. No media generation, editing, publishing, or approval is implemented.",
+  "oneOf": [
+    {"$ref": "#/$defs/creativePackage"},
+    {"$ref": "#/$defs/assetRequest"},
+    {"$ref": "#/$defs/generationBrief"},
+    {"$ref": "#/$defs/noVisualRequired"},
+    {"$ref": "#/$defs/creativeConcern"},
+    {"$ref": "#/$defs/clarificationRequest"}
+  ],
+  "$defs": {
+    "extensions": {
+      "type": "object",
+      "description": "Namespaced future fields. Core contract fields remain closed.",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "additionalProperties": true
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "platform": {
+      "enum": [
+        "Instagram Reels",
+        "TikTok",
+        "YouTube Shorts",
+        "Facebook Reels",
+        "LinkedIn",
+        "X",
+        "Facebook Feed"
+      ]
+    },
+    "platformArray": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/platform"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "format": {
+      "enum": ["SHORT_VIDEO", "LINKEDIN_POST", "X_POST", "X_THREAD", "FACEBOOK_POST", "OTHER"]
+    },
+    "visualType": {
+      "enum": [
+        "A_ROLL",
+        "SCREEN_RECORDING",
+        "SCREENSHOT",
+        "PRODUCT_UI",
+        "DOCUMENT",
+        "REAL_WORLD_EXAMPLE",
+        "TEXT_OVERLAY",
+        "DIAGRAM",
+        "CHART",
+        "GENERATED_IMAGE",
+        "GENERATED_VIDEO",
+        "B_ROLL",
+        "MOTION_GRAPHIC",
+        "THUMBNAIL",
+        "OTHER"
+      ]
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assessment", "basis"],
+      "properties": {
+        "assessment": {"type": "string", "minLength": 1, "description": "Qualitative assessment; exact taxonomy remains unresolved."},
+        "basis": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "productionDifficulty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "reason"],
+      "properties": {
+        "level": {"enum": ["EASY", "MEDIUM", "HIGH"]},
+        "reason": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "assetRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_requirement_id",
+        "required_asset",
+        "visual_type",
+        "visual_type_extension",
+        "classification",
+        "purpose",
+        "factual_role",
+        "source_reference",
+        "human_capture_required",
+        "ai_generation_acceptable",
+        "quality_requirement",
+        "availability",
+        "approval_sensitive"
+      ],
+      "properties": {
+        "asset_requirement_id": {"type": "string", "minLength": 1},
+        "required_asset": {"type": "string", "minLength": 1},
+        "visual_type": {"$ref": "#/$defs/visualType"},
+        "visual_type_extension": {"type": ["string", "null"]},
+        "classification": {"enum": ["REAL", "GENERATED", "DESIGNED", "REFERENCE_ONLY"]},
+        "purpose": {"type": "string", "minLength": 1},
+        "factual_role": {"enum": ["EVIDENCE", "SUPPORTING", "DECORATION", "REFERENCE_ONLY"]},
+        "source_reference": {"type": ["string", "null"]},
+        "human_capture_required": {"type": "boolean"},
+        "ai_generation_acceptable": {"type": "boolean"},
+        "quality_requirement": {"type": "string", "minLength": 1},
+        "availability": {"enum": ["AVAILABLE", "MISSING", "TO_CREATE"]},
+        "approval_sensitive": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"visual_type": {"const": "OTHER"}}, "required": ["visual_type"]},
+          "then": {"properties": {"visual_type_extension": {"type": "string", "minLength": 1}}},
+          "else": {"properties": {"visual_type_extension": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"classification": {"const": "GENERATED"}}, "required": ["classification"]},
+          "then": {"properties": {"factual_role": {"not": {"const": "EVIDENCE"}}}}
+        }
+      ]
+    },
+    "scene": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scene_id",
+        "corresponding_script_section",
+        "visual_type",
+        "visual_type_extension",
+        "purpose",
+        "description",
+        "required_asset",
+        "text_overlay",
+        "evidence_role",
+        "generation_required",
+        "duration_guidance",
+        "notes"
+      ],
+      "properties": {
+        "scene_id": {"type": "string", "minLength": 1},
+        "corresponding_script_section": {"type": ["string", "null"]},
+        "visual_type": {"$ref": "#/$defs/visualType"},
+        "visual_type_extension": {"type": ["string", "null"]},
+        "purpose": {"enum": ["PROVE", "CLARIFY", "RESET_ATTENTION", "DEMONSTRATE", "COMPARE", "EMPHASIZE"]},
+        "description": {"type": "string", "minLength": 1},
+        "required_asset": {"type": ["string", "null"]},
+        "text_overlay": {"type": ["string", "null"]},
+        "evidence_role": {"enum": ["PRIMARY_PROOF", "SUPPORTING_PROOF", "CLARIFICATION", "ATTENTION", "DECORATION", "NONE"]},
+        "generation_required": {"type": "boolean"},
+        "duration_guidance": {"type": ["string", "null"], "description": "Non-frame-accurate guidance only."},
+        "notes": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"visual_type": {"const": "OTHER"}}, "required": ["visual_type"]},
+          "then": {"properties": {"visual_type_extension": {"type": "string", "minLength": 1}}},
+          "else": {"properties": {"visual_type_extension": {"type": "null"}}}
+        }
+      ]
+    },
+    "generationRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation_brief_reference", "purpose", "classification", "could_be_mistaken_for_real", "risk_treatment"],
+      "properties": {
+        "generation_brief_reference": {"type": "string", "minLength": 1},
+        "purpose": {"type": "string", "minLength": 1},
+        "classification": {"const": "GENERATED"},
+        "could_be_mistaken_for_real": {"type": "boolean"},
+        "risk_treatment": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "textOverlayRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlay_id", "source_text", "display_text", "purpose", "meaning_preserved"],
+      "properties": {
+        "overlay_id": {"type": "string", "minLength": 1},
+        "source_text": {"type": "string", "minLength": 1},
+        "display_text": {"type": "string", "minLength": 1},
+        "purpose": {"type": "string", "minLength": 1},
+        "meaning_preserved": {"const": true},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "thumbnailOrCover": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "concept", "promise", "text", "factual_constraint", "approval_sensitive"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "concept": {"type": ["string", "null"]},
+        "promise": {"type": ["string", "null"]},
+        "text": {"type": ["string", "null"]},
+        "factual_constraint": {"type": ["string", "null"]},
+        "approval_sensitive": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "platformAdaptation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "visual_decision", "approach", "reuse_master", "justification", "platform_requirements"],
+      "properties": {
+        "platform": {"$ref": "#/$defs/platform"},
+        "visual_decision": {"enum": ["VISUAL_REQUIRED", "NO_VISUAL_REQUIRED"]},
+        "approach": {"type": "string", "minLength": 1},
+        "reuse_master": {"type": "boolean"},
+        "justification": {"type": "string", "minLength": 1},
+        "platform_requirements": {"$ref": "#/$defs/stringArray"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "approvalSensitiveItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_id", "category", "description", "reason", "requires_sam_review"],
+      "properties": {
+        "item_id": {"type": "string", "minLength": 1},
+        "category": {
+          "enum": ["GENERATED_REPRESENTATION", "VISUAL_CLAIM", "SAM_LIKENESS", "CREATIVE_DEPARTURE", "THUMBNAIL", "SENSITIVE_SCREENSHOT", "EXTERNAL_BRAND_OR_LOGO", "OTHER"]
+        },
+        "description": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "requires_sam_review": {"const": true},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "qualityGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supports_adam_strategy",
+        "aligns_with_brain_content",
+        "visual_purpose_clear",
+        "evidence_distinct_from_decoration",
+        "no_fake_proof",
+        "complexity_justified",
+        "required_assets_identified",
+        "missing_assets_requested",
+        "realistic_to_execute",
+        "platform_requirements_respected",
+        "visuals_add_value",
+        "generated_assets_governed",
+        "no_unnecessary_work",
+        "practical_ai_alignment",
+        "reasoning"
+      ],
+      "properties": {
+        "supports_adam_strategy": {"type": "boolean"},
+        "aligns_with_brain_content": {"type": "boolean"},
+        "visual_purpose_clear": {"type": "boolean"},
+        "evidence_distinct_from_decoration": {"type": "boolean"},
+        "no_fake_proof": {"type": "boolean"},
+        "complexity_justified": {"type": "boolean"},
+        "required_assets_identified": {"type": "boolean"},
+        "missing_assets_requested": {"type": "boolean"},
+        "realistic_to_execute": {"type": "boolean"},
+        "platform_requirements_respected": {"type": "boolean"},
+        "visuals_add_value": {"type": "boolean"},
+        "generated_assets_governed": {"type": "boolean"},
+        "no_unnecessary_work": {"type": "boolean"},
+        "practical_ai_alignment": {"type": "boolean"},
+        "reasoning": {"type": "string", "minLength": 1},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "creativePackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "creative_package_id",
+        "brief_id",
+        "draft_id",
+        "format",
+        "target_platforms",
+        "creative_objective",
+        "visual_thesis",
+        "production_difficulty",
+        "scenes",
+        "asset_requirements",
+        "proof_assets",
+        "generated_asset_requirements",
+        "text_overlay_requirements",
+        "thumbnail_or_cover",
+        "platform_adaptations",
+        "risks",
+        "factual_visual_constraints",
+        "source_references",
+        "confidence",
+        "missing_assets",
+        "approval_sensitive_items",
+        "readiness",
+        "approval_status",
+        "quality_gate"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "CREATIVE_PACKAGE"},
+        "created_by": {"const": "jax"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "creative_package_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "draft_id": {"type": ["string", "null"]},
+        "format": {"$ref": "#/$defs/format"},
+        "target_platforms": {"$ref": "#/$defs/platformArray"},
+        "creative_objective": {"type": "string", "minLength": 1},
+        "visual_thesis": {"type": "string", "minLength": 1},
+        "production_difficulty": {"$ref": "#/$defs/productionDifficulty"},
+        "scenes": {"type": "array", "items": {"$ref": "#/$defs/scene"}},
+        "asset_requirements": {"type": "array", "items": {"$ref": "#/$defs/assetRequirement"}},
+        "proof_assets": {"$ref": "#/$defs/stringArray"},
+        "generated_asset_requirements": {"type": "array", "items": {"$ref": "#/$defs/generationRequirement"}},
+        "text_overlay_requirements": {"type": "array", "items": {"$ref": "#/$defs/textOverlayRequirement"}},
+        "thumbnail_or_cover": {"$ref": "#/$defs/thumbnailOrCover"},
+        "platform_adaptations": {"type": "array", "items": {"$ref": "#/$defs/platformAdaptation"}, "minItems": 1},
+        "risks": {"$ref": "#/$defs/stringArray"},
+        "factual_visual_constraints": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "source_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "confidence": {"$ref": "#/$defs/confidence"},
+        "missing_assets": {"$ref": "#/$defs/stringArray"},
+        "approval_sensitive_items": {"type": "array", "items": {"$ref": "#/$defs/approvalSensitiveItem"}},
+        "readiness": {"enum": ["READY_FOR_SAM_REVIEW", "WAITING_FOR_ASSETS", "REVISION_REQUIRED"]},
+        "approval_status": {"const": "REQUIRES_SAM_APPROVAL"},
+        "quality_gate": {"$ref": "#/$defs/qualityGate"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"format": {"const": "SHORT_VIDEO"}}, "required": ["format"]},
+          "then": {
+            "properties": {
+              "target_platforms": {
+                "type": "array",
+                "items": {"enum": ["Instagram Reels", "TikTok", "YouTube Shorts", "Facebook Reels"]},
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "scenes": {"minItems": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"readiness": {"const": "READY_FOR_SAM_REVIEW"}}, "required": ["readiness"]},
+          "then": {
+            "properties": {
+              "missing_assets": {"maxItems": 0},
+              "quality_gate": {
+                "properties": {
+                  "supports_adam_strategy": {"const": true},
+                  "aligns_with_brain_content": {"const": true},
+                  "visual_purpose_clear": {"const": true},
+                  "evidence_distinct_from_decoration": {"const": true},
+                  "no_fake_proof": {"const": true},
+                  "complexity_justified": {"const": true},
+                  "required_assets_identified": {"const": true},
+                  "missing_assets_requested": {"const": true},
+                  "realistic_to_execute": {"const": true},
+                  "platform_requirements_respected": {"const": true},
+                  "visuals_add_value": {"const": true},
+                  "generated_assets_governed": {"const": true},
+                  "no_unnecessary_work": {"const": true},
+                  "practical_ai_alignment": {"const": true}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "assetRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "asset_request_id",
+        "brief_id",
+        "creative_package_id",
+        "destination",
+        "required_asset",
+        "reason",
+        "instructions",
+        "priority",
+        "human_capture_required",
+        "ai_generation_acceptable",
+        "quality_requirement",
+        "intended_classification",
+        "source_references",
+        "blocks_ready_package"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "ASSET_REQUEST"},
+        "created_by": {"const": "jax"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "asset_request_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "creative_package_id": {"type": ["string", "null"]},
+        "destination": {"enum": ["sam", "adam", "system"]},
+        "required_asset": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "instructions": {"type": "string", "minLength": 1},
+        "priority": {"type": "string", "minLength": 1, "description": "Qualitative priority; exact taxonomy remains unresolved."},
+        "human_capture_required": {"type": "boolean"},
+        "ai_generation_acceptable": {"type": "boolean"},
+        "quality_requirement": {"type": "string", "minLength": 1},
+        "intended_classification": {"enum": ["REAL", "GENERATED", "DESIGNED", "REFERENCE_ONLY"]},
+        "source_references": {"$ref": "#/$defs/stringArray"},
+        "blocks_ready_package": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "generationBrief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "generation_brief_id",
+        "brief_id",
+        "creative_package_id",
+        "generation_type",
+        "classification",
+        "purpose",
+        "visual_concept",
+        "subject",
+        "composition",
+        "format_and_aspect_ratio",
+        "must_include",
+        "must_avoid",
+        "factual_constraints",
+        "text_constraints",
+        "continuity_requirements",
+        "target_usage",
+        "could_be_mistaken_for_real",
+        "risk_treatment",
+        "approval_sensitive",
+        "provider_policy"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "GENERATION_BRIEF"},
+        "created_by": {"const": "jax"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "generation_brief_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "creative_package_id": {"type": ["string", "null"]},
+        "generation_type": {"enum": ["IMAGE", "VIDEO"]},
+        "classification": {"const": "GENERATED"},
+        "purpose": {"type": "string", "minLength": 1},
+        "visual_concept": {"type": "string", "minLength": 1},
+        "subject": {"type": "string", "minLength": 1},
+        "composition": {"type": "string", "minLength": 1},
+        "format_and_aspect_ratio": {"type": "string", "minLength": 1},
+        "must_include": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "must_avoid": {"$ref": "#/$defs/stringArray"},
+        "factual_constraints": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "text_constraints": {"$ref": "#/$defs/stringArray"},
+        "continuity_requirements": {"$ref": "#/$defs/stringArray"},
+        "target_usage": {"type": "string", "minLength": 1},
+        "could_be_mistaken_for_real": {"type": "boolean"},
+        "risk_treatment": {"type": "string", "minLength": 1},
+        "approval_sensitive": {"type": "boolean"},
+        "provider_policy": {"const": "UNRESOLVED_PROVIDER_AGNOSTIC"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "noVisualRequired": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "decision_id",
+        "brief_id",
+        "draft_id",
+        "target_platforms",
+        "reasoning",
+        "strategy_supported",
+        "approval_status"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "NO_VISUAL_REQUIRED"},
+        "created_by": {"const": "jax"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "decision_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "draft_id": {"type": ["string", "null"]},
+        "target_platforms": {
+          "type": "array",
+          "items": {"enum": ["LinkedIn", "X", "Facebook Feed"]},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "reasoning": {"type": "string", "minLength": 1},
+        "strategy_supported": {"const": true},
+        "approval_status": {"const": "REQUIRES_SAM_APPROVAL"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    },
+    "creativeConcern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "concern_id",
+        "brief_id",
+        "draft_id",
+        "destinations",
+        "concern_type",
+        "approved_requirement",
+        "conflicting_requirement",
+        "reasoning",
+        "recommended_resolution",
+        "blocks_ready_package"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "CREATIVE_CONCERN"},
+        "created_by": {"const": "jax"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "concern_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "draft_id": {"type": ["string", "null"]},
+        "destinations": {
+          "type": "array",
+          "items": {"enum": ["adam", "brain"]},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "concern_type": {
+          "enum": ["STRATEGY_VISUAL_CONFLICT", "COPY_VISUAL_CONFLICT", "UNPROVABLE_VISUAL_CLAIM", "EXCESSIVE_PRODUCTION_COMPLEXITY", "UNSAFE_OR_MISLEADING_GENERATED_ASSET"]
+        },
+        "approved_requirement": {"type": "string", "minLength": 1},
+        "conflicting_requirement": {"type": "string", "minLength": 1},
+        "reasoning": {"type": "string", "minLength": 1},
+        "recommended_resolution": {"type": "string", "minLength": 1},
+        "blocks_ready_package": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"concern_type": {"const": "STRATEGY_VISUAL_CONFLICT"}}, "required": ["concern_type"]},
+          "then": {"properties": {"destinations": {"contains": {"const": "adam"}}}}
+        },
+        {
+          "if": {"properties": {"concern_type": {"const": "COPY_VISUAL_CONFLICT"}}, "required": ["concern_type"]},
+          "then": {"properties": {"destinations": {"contains": {"const": "brain"}}}}
+        }
+      ]
+    },
+    "clarificationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_type",
+        "created_by",
+        "source_input_references",
+        "request_id",
+        "brief_id",
+        "destination",
+        "reason_type",
+        "issue",
+        "questions",
+        "blocks_ready_package"
+      ],
+      "properties": {
+        "schema_version": {"const": "1.0.0"},
+        "artifact_type": {"const": "CLARIFICATION_REQUEST"},
+        "created_by": {"const": "jax"},
+        "source_input_references": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "request_id": {"type": "string", "minLength": 1},
+        "brief_id": {"type": "string", "minLength": 1},
+        "destination": {"const": "sam"},
+        "reason_type": {"const": "UNCLEAR_SAM_FEEDBACK"},
+        "issue": {"type": "string", "minLength": 1},
+        "questions": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "blocks_ready_package": {"type": "boolean"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      }
+    }
+  }
+}

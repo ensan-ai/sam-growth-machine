@@ -1,0 +1,83 @@
+schema_version: "1.0.0"
+workflow_id: personal-brand-growth-loop
+name: Personal Brand Growth Loop
+status: high_level_specification_only
+
+scope:
+  product: SAM Growth Machine
+  business: SAM PERSONAL BRAND
+  version: V1
+
+participants:
+  human_authority: sam
+  ai_employees:
+    - travis
+    - saly
+    - adam
+    - brain
+    - jax
+    - maro
+    - lara
+
+weekly_content_target:
+  original_shorts: 3
+  short_distribution_platforms:
+    - Instagram Reels
+    - TikTok
+    - YouTube Shorts
+    - Facebook Reels
+  linkedin_posts: 3
+  x_posts: 2
+  facebook_feed_posts: 3
+  repurposing_supported: true
+
+sequence:
+  - order: 1
+    label: SAM
+    actors: [sam]
+    stage_type: human
+  - order: 2
+    label: TRAVIS
+    actors: [travis]
+    stage_type: ai_employee
+  - order: 3
+    label: SALY
+    actors: [saly]
+    stage_type: ai_employee
+  - order: 4
+    label: TRAVIS
+    actors: [travis]
+    stage_type: ai_employee
+  - order: 5
+    label: ADAM
+    actors: [adam]
+    stage_type: ai_employee
+  - order: 6
+    label: BRAIN + JAX
+    actors: [brain, jax]
+    stage_type: multi_ai_employee_stage
+  - order: 7
+    label: SAM APPROVAL
+    actors: [sam]
+    stage_type: human_approval
+  - order: 8
+    label: MARO
+    actors: [maro]
+    stage_type: ai_employee
+  - order: 9
+    label: LARA
+    actors: [lara]
+    stage_type: ai_employee
+  - order: 10
+    label: TRAVIS
+    actors: [travis]
+    stage_type: ai_employee
+  - order: 11
+    label: NEXT DECISION / NEXT CYCLE
+    actors: []
+    stage_type: cycle_transition
+
+constraints:
+  executable: false
+  detailed_behavior_defined: false
+  publishing_implemented: false

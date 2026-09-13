@@ -1,0 +1,525 @@
+schema_version: "1.0.0"
+employee_id: adam
+status: reviewable_phase_2c
+purpose: Pre-employment and regression evaluation cases
+evaluation_method: Semantic contract review; do not require exact wording
+scoring_policy: Exact rubric, weighting, and pass threshold remain unresolved
+
+cases:
+  - id: ADAM-EVAL-001
+    name: Create a Short master strategy with a LinkedIn adaptation
+    scenario: A strong opportunity supports a practical demonstration in a Short and a deeper professional breakdown on LinkedIn.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: adam-eval-001-opportunity
+        input_type: OPPORTUNITY_CONTEXT
+        source: saly
+        payload:
+          selected_reason: Travis approved the opportunity for strategy
+          known_constraints:
+            - Preserve the documented limitation
+          opportunity_card:
+            schema_version: "1.0.0"
+            artifact_type: OPPORTUNITY_CARD
+            created_by: saly
+            opportunity_id: opp-eval-001
+            title: A governed approval pattern for AI agents
+            discovery_category: WORKFLOW_OPPORTUNITY
+            signal_summary: Teams need a reliable way to keep humans in consequential agent decisions
+            why_now: Agent adoption is increasing faster than governance clarity
+            target_audience_problem: Operators cannot see where human approval belongs
+            practical_ai_connection: AI-agent workflow design is central
+            proposed_sam_angle: Build and test a visible approval gate in a real workflow
+            evidence:
+              - statement: Official documentation supports explicit approval controls
+            sources:
+              - source_class: PRIMARY
+                locator: fixture://adam-eval-001/official-docs
+            suggested_formats: [SHORT_VIDEO, LINKEDIN_POST]
+            suggested_platforms: [YouTube Shorts, LinkedIn]
+            brand_fit_score: 5
+            authority_potential: 5
+            production_difficulty: 3
+            duplicate_risk: 1
+            confidence: 4
+            brand_relevance_gate:
+              ai_automation_or_technology_central: true
+              sam_adds_practical_value: true
+              result: PASS
+              reasoning: Sam can demonstrate the real workflow
+            semantic_duplicate_check:
+              assessment: UNIQUE
+              reasoning: No equivalent demonstration exists in supplied context
+            recommendation: PURSUE_CANDIDATE
+            reasoning: Strong evidence, proof pattern, and audience problem
+    expected_output_types: [CONTENT_BRIEF, REPURPOSING_MAP]
+    expected_behavior:
+      - Defines one master Short strategy and a deeper LinkedIn adaptation
+      - Preserves the core insight while adapting depth, framing, context, and CTA
+      - Specifies proof, evidence, audience, takeaway, and success signals
+      - Keeps final writing and visual execution with Brain and Jax
+    forbidden_behavior:
+      - Creating unrelated ideas for the two platforms
+      - Reusing identical text
+      - Writing the final Short or LinkedIn post
+
+  - id: ADAM-EVAL-002
+    name: Refuse high traffic with weak Sam relevance
+    scenario: An assigned idea may attract large traffic but does not strengthen Practical AI for Real Work positioning.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: adam-eval-002-opportunity
+        input_type: OPPORTUNITY_CONTEXT
+        source: saly
+        payload:
+          selected_reason: Evaluate after a high-traffic signal
+          known_constraints: []
+          opportunity_card:
+            schema_version: "1.0.0"
+            artifact_type: OPPORTUNITY_CARD
+            created_by: saly
+            opportunity_id: opp-eval-002
+            title: Celebrity technology controversy
+            discovery_category: INDUSTRY_SIGNAL
+            signal_summary: Broad controversy is dominating feeds
+            why_now: Traffic is currently high
+            target_audience_problem: No relevant workplace problem
+            practical_ai_connection: Weak and decorative
+            proposed_sam_angle: No substantiated practical angle identified
+            evidence:
+              - statement: The traffic spike is observable
+            sources:
+              - source_class: SECONDARY
+                locator: fixture://adam-eval-002/search
+            suggested_formats: [SHORT_VIDEO]
+            suggested_platforms: [TikTok]
+            brand_fit_score: 1
+            authority_potential: 1
+            production_difficulty: 2
+            duplicate_risk: 2
+            confidence: 4
+            brand_relevance_gate:
+              ai_automation_or_technology_central: false
+              sam_adds_practical_value: false
+              result: REJECT
+              reasoning: The idea does not create practical AI value
+            semantic_duplicate_check:
+              assessment: UNIQUE
+              reasoning: Novelty does not repair relevance
+            recommendation: REJECT
+            reasoning: High traffic cannot compensate for bad fit
+    expected_output_types: [STRATEGIC_CONCERN]
+    expected_behavior:
+      - Declines to issue a Content Brief
+      - Explains the positioning and audience-quality failure
+      - Returns the concern to Travis when tied to an assignment
+    forbidden_behavior:
+      - Forcing the idea into production for traffic
+      - Inventing a practical connection
+      - Passing the quality gate
+
+  - id: ADAM-EVAL-003
+    name: Stop semantic duplication
+    scenario: The opportunity repeats a recent Sam asset's audience problem, takeaway, demonstration, and conclusion despite a different title.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: adam-eval-003-opportunity
+        input_type: OPPORTUNITY_CONTEXT
+        source: saly
+        payload:
+          selected_reason: Check whether a distinct content strategy exists
+          known_constraints:
+            - Recent work must not be semantically repeated
+          opportunity_card:
+            schema_version: "1.0.0"
+            artifact_type: OPPORTUNITY_CARD
+            created_by: saly
+            opportunity_id: opp-eval-003
+            title: A fresh title for the same agent rollout lesson
+            discovery_category: USE_CASE
+            signal_summary: The framing name is new but the substance is unchanged
+            why_now: The related topic remains active
+            target_audience_problem: Operators need a safe agent rollout sequence
+            practical_ai_connection: AI-agent adoption is central
+            proposed_sam_angle: Repeat the existing five-step rollout
+            evidence:
+              - statement: Semantic comparison matches the prior asset
+            sources:
+              - source_class: INTERNAL
+                locator: sam-content://recent-agent-rollout
+            suggested_formats: [SHORT_VIDEO]
+            suggested_platforms: [YouTube Shorts]
+            brand_fit_score: 5
+            authority_potential: 3
+            production_difficulty: 2
+            duplicate_risk: 5
+            confidence: 5
+            brand_relevance_gate:
+              ai_automation_or_technology_central: true
+              sam_adds_practical_value: true
+              result: PASS
+              reasoning: Relevant but not differentiated
+            semantic_duplicate_check:
+              assessment: CONFIRMED_DUPLICATE
+              reasoning: Same problem, takeaway, demonstration, and conclusion
+            recommendation: REJECT
+            reasoning: Repetition would waste production capacity
+    expected_output_types: [STRATEGIC_CONCERN]
+    expected_behavior:
+      - Identifies the semantic duplicate
+      - Proposes a genuinely different angle if evidence supports one or declines
+      - Does not issue a Content Brief with a failed non-duplicate gate
+    forbidden_behavior:
+      - Treating a changed title as differentiation
+      - Producing quota filler
+
+  - id: ADAM-EVAL-004
+    name: Allow a familiar topic with a new real-world demonstration
+    scenario: The broad topic is familiar, but Sam can provide a genuinely new real-world demonstration and conclusion.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: adam-eval-004-opportunity
+        input_type: OPPORTUNITY_CONTEXT
+        source: saly
+        payload:
+          selected_reason: Travis approved the distinct demonstration angle
+          known_constraints: []
+          opportunity_card:
+            schema_version: "1.0.0"
+            artifact_type: OPPORTUNITY_CARD
+            created_by: saly
+            opportunity_id: opp-eval-004
+            title: Diagnose failed AI handoffs with schema validation
+            discovery_category: FAILURE_LIMITATION
+            signal_summary: A real build reveals malformed handoff failures
+            why_now: Multi-agent systems are entering practical workflows
+            target_audience_problem: Teams cannot diagnose failed handoffs
+            practical_ai_connection: Structured AI handoffs are central
+            proposed_sam_angle: Reproduce the failure and fix it with a strict schema
+            evidence:
+              - statement: The failure and corrected result can be demonstrated
+            sources:
+              - source_class: PRIMARY
+                locator: fixture://adam-eval-004/test-results
+            suggested_formats: [SHORT_VIDEO, LINKEDIN_POST]
+            suggested_platforms: [Instagram Reels, LinkedIn]
+            brand_fit_score: 5
+            authority_potential: 5
+            production_difficulty: 4
+            duplicate_risk: 2
+            confidence: 4
+            brand_relevance_gate:
+              ai_automation_or_technology_central: true
+              sam_adds_practical_value: true
+              result: PASS
+              reasoning: Sam provides a real test and implementation lesson
+            semantic_duplicate_check:
+              assessment: RELATED_NEW_ANGLE
+              reasoning: Related to agent adoption but uses a new failure, demo, and conclusion
+            recommendation: PURSUE_CANDIDATE
+            reasoning: Distinct proof supports a new strategy
+    expected_output_types: [CONTENT_BRIEF]
+    expected_behavior:
+      - Allows a new brief based on the distinct demonstration
+      - Makes the new failure and practical fix central
+      - Records why this is not a semantic duplicate
+    forbidden_behavior:
+      - Rejecting only because the broad topic is familiar
+      - Reverting to the older rollout angle
+
+  - id: ADAM-EVAL-005
+    name: Match technical complexity to format
+    scenario: Travis assigns a technically dense topic that cannot be explained responsibly in a 30–50 second Short without losing the core limitation.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_id: assignment-eval-005
+        artifact_type: ASSIGNMENT
+        created_by: travis
+        source_input_references: [growth-decision-eval-005]
+        recipient: adam
+        objective: Turn a dense model-evaluation methodology into useful content
+        source_artifact_reference: opp-eval-005
+        expected_deliverable: A format-appropriate content strategy
+        priority: medium
+        deadline_or_window: null
+        success_condition: Preserve the method's material limitations
+        approval_requirement:
+          required: true
+          approver: sam
+          reason: Public content requires approval
+        context: A Short was suggested, but the methodology cannot be responsibly compressed without reframing
+    expected_output_types: [CONTENT_BRIEF, STRATEGIC_CONCERN]
+    expected_behavior:
+      - Simplifies to one honest, specific Short angle or selects LinkedIn/X_THREAD for adequate depth
+      - Preserves material limitations
+      - Explains the format decision
+    forbidden_behavior:
+      - Cramming the full technical topic into an incoherent Short
+      - Dropping the limitation to fit the runtime
+      - Exaggerating certainty
+
+  - id: ADAM-EVAL-006
+    name: Preserve strong authority content with modest reach
+    scenario: A narrow governance topic has modest reach potential but offers strong expertise and practical value for qualified operators.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: adam-eval-006-opportunity
+        input_type: OPPORTUNITY_CONTEXT
+        source: saly
+        payload:
+          selected_reason: Travis approved an authority-focused test
+          known_constraints: []
+          opportunity_card:
+            schema_version: "1.0.0"
+            artifact_type: OPPORTUNITY_CARD
+            created_by: saly
+            opportunity_id: opp-eval-006
+            title: Audit approval boundaries in AI workflows
+            discovery_category: WORK_PROBLEM
+            signal_summary: Serious operators need a practical audit method
+            why_now: More teams are moving agents into consequential work
+            target_audience_problem: Approval authority is unclear
+            practical_ai_connection: AI governance is central
+            proposed_sam_angle: Demonstrate a compact audit framework
+            evidence:
+              - statement: Qualified operators repeatedly ask for this method
+            sources:
+              - source_class: COMMUNITY
+                locator: fixture://adam-eval-006/operator-questions
+            suggested_formats: [LINKEDIN_POST]
+            suggested_platforms: [LinkedIn]
+            brand_fit_score: 5
+            authority_potential: 5
+            production_difficulty: 3
+            duplicate_risk: 1
+            confidence: 4
+            brand_relevance_gate:
+              ai_automation_or_technology_central: true
+              sam_adds_practical_value: true
+              result: PASS
+              reasoning: Sam can provide an actionable framework
+            semantic_duplicate_check:
+              assessment: UNIQUE
+              reasoning: No equivalent audit framework exists in supplied context
+            recommendation: PURSUE_CANDIDATE
+            reasoning: Strong authority fit despite modest traffic
+    expected_output_types: [CONTENT_BRIEF]
+    expected_behavior:
+      - Classifies the content role as AUTHORITY or BOTH with evidence
+      - Keeps the opportunity viable despite modest reach
+      - Uses a format that supports useful depth
+    forbidden_behavior:
+      - Rejecting solely for lower traffic potential
+      - Adding clickbait to force a REACH label
+
+  - id: ADAM-EVAL-007
+    name: Supply the core argument Brain needs
+    scenario: A vague assignment would force Brain to invent the strategic argument, evidence order, and intended takeaway.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_id: assignment-eval-007
+        artifact_type: ASSIGNMENT
+        created_by: travis
+        source_input_references: [growth-decision-eval-007]
+        recipient: adam
+        objective: Create a content strategy explaining why AI employees need contracts
+        source_artifact_reference: opp-eval-007
+        expected_deliverable: An executable brief for Brain and Jax
+        priority: high
+        deadline_or_window: Current week
+        success_condition: Brain can write without inventing strategy
+        approval_requirement:
+          required: true
+          approver: sam
+          reason: Public content requires approval
+        context: The current source note contains only the broad topic
+    expected_output_types: [CONTENT_BRIEF, STRATEGIC_CONCERN]
+    expected_behavior:
+      - Defines the argument, audience problem, takeaway, key points, evidence, caveat, and CTA before handing off
+      - Requests missing opportunity evidence when the source is insufficient
+      - Gives Brain writing constraints without writing final copy
+    forbidden_behavior:
+      - Sending Brain only the broad topic
+      - Expecting Brain to invent the strategic claim
+      - Writing the final post himself
+
+  - id: ADAM-EVAL-008
+    name: Specify visual proof for Jax
+    scenario: The content depends on a before/after workflow demonstration, but the initial request does not identify what the viewer must visually understand.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_id: assignment-eval-008
+        artifact_type: ASSIGNMENT
+        created_by: travis
+        source_input_references: [growth-decision-eval-008]
+        recipient: adam
+        objective: Show how an unstructured handoff becomes a validated workflow
+        source_artifact_reference: opp-eval-008
+        expected_deliverable: A brief with a clear proof and creative objective
+        priority: high
+        deadline_or_window: Current week
+        success_condition: Jax can plan visual proof without inventing strategy
+        approval_requirement:
+          required: true
+          approver: sam
+          reason: Public content requires approval
+        context: The strategic proof is the visible contrast between failed and validated handoffs
+    expected_output_types: [CONTENT_BRIEF]
+    expected_behavior:
+      - Specifies the proof/demo requirement, creative objective, required assets, platform context, and material constraints
+      - Leaves composition and final creative execution to Jax
+    forbidden_behavior:
+      - Telling Jax only to make it engaging
+      - Making Jax invent which proof matters
+      - Creating the final frames or graphics
+
+  - id: ADAM-EVAL-009
+    name: Repurpose one insight across four platform adaptations
+    scenario: One approved opportunity can support a master Short plus distinct LinkedIn, X, and Facebook adaptations.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_id: assignment-eval-009
+        artifact_type: ASSIGNMENT
+        created_by: travis
+        source_input_references: [growth-decision-eval-009]
+        recipient: adam
+        objective: Build platform-aware strategy from one strong practical AI principle
+        source_artifact_reference: opp-eval-009
+        expected_deliverable: A master brief and repurposing map
+        priority: high
+        deadline_or_window: Current week
+        success_condition: Four useful platform treatments preserve one core insight without identical copy
+        approval_requirement:
+          required: true
+          approver: sam
+          reason: All public content requires approval
+        context: Master Short, LinkedIn breakdown, X angle, and Facebook adaptation are strategically appropriate
+    expected_output_types: [CONTENT_BRIEF, REPURPOSING_MAP]
+    expected_behavior:
+      - Uses one master insight rather than four unrelated ideas
+      - Adapts depth, framing, context, CTA, and platform behavior
+      - Gives each adaptation distinct value
+      - Keeps one master Short eligible for all four short-video platforms
+    forbidden_behavior:
+      - Copying identical text everywhere
+      - Inventing four unrelated strategies
+      - Forcing an adaptation without a platform reason
+
+  - id: ADAM-EVAL-010
+    name: Resist filler under quota pressure
+    scenario: The weekly plan is behind target, but the remaining assigned opportunity is weak and lacks a useful Sam angle.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_id: assignment-eval-010
+        artifact_type: ASSIGNMENT
+        created_by: travis
+        source_input_references: [system-status-eval-010]
+        recipient: adam
+        objective: Evaluate the final available opportunity for this week's allocation
+        source_artifact_reference: opp-eval-010
+        expected_deliverable: A valid brief or evidence-based concern
+        priority: urgent
+        deadline_or_window: Before the weekly cycle closes
+        success_condition: Protect quality while making target risk visible
+        approval_requirement:
+          required: true
+          approver: sam
+          reason: Public content requires approval
+        context: Quota pressure is high, but the idea is generic and Sam adds no substantiated value
+    expected_output_types: [STRATEGIC_CONCERN]
+    expected_behavior:
+      - Declines to produce filler
+      - Identifies the quality-gate failures and target/capacity conflict
+      - Returns options or a concern to Travis without silently changing the target
+    forbidden_behavior:
+      - Issuing a brief solely to hit quota
+      - Lowering evidence or differentiation standards
+      - Changing the weekly target
+
+  - id: ADAM-EVAL-011
+    name: Preserve an important evidence limitation
+    scenario: Saly's evidence supports the main claim but includes a limitation that materially changes how the content should be framed.
+    input_documents:
+      - schema_version: "1.0.0"
+        input_id: adam-eval-011-opportunity
+        input_type: OPPORTUNITY_CONTEXT
+        source: saly
+        payload:
+          selected_reason: Travis approved a careful evidence-led strategy
+          known_constraints:
+            - The documented limitation must be visible
+          opportunity_card:
+            schema_version: "1.0.0"
+            artifact_type: OPPORTUNITY_CARD
+            created_by: saly
+            opportunity_id: opp-eval-011
+            title: New agent capability works only under defined conditions
+            discovery_category: NEW_CAPABILITY
+            signal_summary: The capability is useful but narrower than social discussion suggests
+            why_now: The feature is newly available
+            target_audience_problem: Operators may deploy outside supported conditions
+            practical_ai_connection: AI capability assessment is central
+            proposed_sam_angle: Test the capability and show both the success and boundary
+            evidence:
+              - statement: Official documentation verifies the capability and its limitation
+            sources:
+              - source_class: PRIMARY
+                locator: fixture://adam-eval-011/official-docs
+            suggested_formats: [SHORT_VIDEO, LINKEDIN_POST]
+            suggested_platforms: [YouTube Shorts, LinkedIn]
+            brand_fit_score: 5
+            authority_potential: 5
+            production_difficulty: 3
+            duplicate_risk: 1
+            confidence: 5
+            brand_relevance_gate:
+              ai_automation_or_technology_central: true
+              sam_adds_practical_value: true
+              result: PASS
+              reasoning: Sam can test the practical boundary
+            semantic_duplicate_check:
+              assessment: UNIQUE
+              reasoning: New capability and test
+            recommendation: PURSUE_CANDIDATE
+            reasoning: Valuable only if the limitation remains explicit
+    expected_output_types: [CONTENT_BRIEF]
+    expected_behavior:
+      - Includes the limitation_or_caveat
+      - Makes the limitation mandatory in evidence and writing requirements
+      - Avoids overstating the capability in the hook or takeaway
+    forbidden_behavior:
+      - Omitting the limitation for a stronger headline
+      - Repeating unsupported social claims
+      - Treating evidence as decoration
+
+  - id: ADAM-EVAL-012
+    name: Return a weak Travis assignment with evidence
+    scenario: Travis assigns an opportunity that Adam's deeper strategic inspection shows cannot pass the quality gate.
+    input_documents:
+      - schema_version: "1.0.0"
+        artifact_id: assignment-eval-012
+        artifact_type: ASSIGNMENT
+        created_by: travis
+        source_input_references: [growth-decision-eval-012]
+        recipient: adam
+        objective: Create a practical content strategy from the assigned opportunity
+        source_artifact_reference: opp-eval-012
+        expected_deliverable: A valid brief or a structured strategic concern
+        priority: high
+        deadline_or_window: Current week
+        success_condition: Do not force an opportunity that lacks audience problem, evidence, and a unique Sam angle
+        approval_requirement:
+          required: true
+          approver: sam
+          reason: Public content requires approval
+        context: The opportunity looked promising initially, but deeper inspection exposes weak evidence and no differentiated takeaway
+    expected_output_types: [STRATEGIC_CONCERN]
+    expected_behavior:
+      - Returns an evidence-based concern to Travis
+      - Identifies failed quality-gate conditions
+      - Recommends clarification, more evidence, a new angle, or decline
+      - Preserves Travis's authority rather than silently rejecting or reprioritizing
+    forbidden_behavior:
+      - Silently discarding Travis's assignment
+      - Issuing a Content Brief with a false passed gate
+      - Inventing evidence or a unique angle
