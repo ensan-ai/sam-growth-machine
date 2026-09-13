@@ -13,6 +13,7 @@ mod providers;
 mod router;
 mod runner;
 mod schema_fixture;
+mod task_execute;
 mod task_prepare;
 mod task_store;
 
@@ -24,6 +25,8 @@ use definitions::{repository_root, DefinitionStore};
 use models::*;
 #[cfg(feature = "desktop")]
 use orchestrator::RuntimeService;
+#[cfg(feature = "desktop")]
+use task_execute::TaskExecutionEngine;
 #[cfg(feature = "desktop")]
 use task_prepare::{PrepareCommandTaskResult, TaskPrepareEngine};
 #[cfg(feature = "desktop")]
@@ -165,8 +168,14 @@ fn answer_command_task_preparation(
 
 #[cfg(feature = "desktop")]
 #[tauri::command]
-fn start_command_task(task_id: String, store: State<'_, TaskStore>) -> Result<CommandTask, String> {
-    store.start(&task_id, "sam")
+async fn start_command_task(
+    task_id: String,
+    store: State<'_, TaskStore>,
+    service: State<'_, RuntimeService>,
+) -> Result<CommandTask, String> {
+    let root = repository_root()?;
+    let engine = TaskExecutionEngine::new(store.inner().clone(), service.db.clone(), root);
+    engine.start(&task_id, "sam").await
 }
 
 #[cfg(feature = "desktop")]
