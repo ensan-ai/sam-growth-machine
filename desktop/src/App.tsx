@@ -19,6 +19,7 @@ export default function App(){
   useEffect(()=>{refresh();const timer=window.setInterval(()=>{if(!document.hidden)refresh();},4000);return()=>clearInterval(timer);},[refresh]);
   const act=async(fn:()=>Promise<unknown>)=>{setBusy(true);setError(undefined);try{await fn();await refresh();}catch(e){setError(String(e));}finally{setBusy(false);}};
   const selectWork=async(id:string)=>{setSelected(id);setDetail(await runtime.workItem(id));setView("WORK");};
+  const focusEmployee=useCallback((_id:string)=>{ /* selection boundary for future Employee Studio */ },[]);
   const latestHandoffs=detail?.handoffs||[];
   return <div className={`app-shell view-${view.toLowerCase()}`}>
     <div className="aurora aurora-one"/><div className="aurora aurora-two"/><div className="aurora aurora-three"/>
@@ -30,7 +31,7 @@ export default function App(){
     <main>
       <header><div><p className="eyebrow">SAM GROWTH MACHINE</p><h1>{view==="HOME"?"Mission control":view[0]+view.slice(1).toLowerCase()}</h1></div><div className="header-actions"><span className="provider-pill"><i className={dashboard?.providerStatus.ollamaModelAvailable?"tiny-light":"tiny-light blocked"}/>Ollama <span>{dashboard?.providerStatus.ollamaModelAvailable?dashboard.providerStatus.ollamaModel:"Unavailable"}</span></span><button className="icon-button" onClick={refresh} aria-label="Refresh"><RefreshCw size={15} className={busy?"spin":""}/></button><div className="company-controls"><ControlButton icon={CirclePlay} label="Run" onClick={()=>act(()=>runtime.control("RUN"))}/><ControlButton icon={CirclePause} label="Pause" onClick={()=>act(()=>runtime.control("PAUSE"))}/><ControlButton icon={Square} label="Stop" onClick={()=>act(()=>runtime.control("STOP"))}/></div><button className="primary" onClick={()=>setNewWork(true)}>New work item <span>＋</span></button></div></header>
       {error&&<div className="error-banner"><span>{error}</span><button onClick={()=>setError(undefined)}><X size={16}/></button></div>}
-      {view==="HOME"&&dashboard&&<MissionHome dashboard={dashboard} team={team} activity={activity} handoffs={latestHandoffs} selectEmployee={()=>setView("TEAM")} selectWork={selectWork} openActivity={()=>setView("ACTIVITY")} openApprovals={()=>setView("APPROVALS")}/>} 
+      {view==="HOME"&&dashboard&&<MissionHome dashboard={dashboard} team={team} activity={activity} handoffs={latestHandoffs} workItems={dashboard.workItems} selectEmployee={focusEmployee} selectWork={selectWork} openActivity={()=>setView("ACTIVITY")} openApprovals={()=>setView("APPROVALS")}/>} 
       {view==="TEAM"&&<EmployeeTeam team={team} activity={activity}/>} 
       {view==="WORK"&&<WorkView work={dashboard?.workItems||[]} detail={detail} selectWork={selectWork} run={()=>detail&&act(()=>runtime.runWorkItem(detail.workItem.workItemId))}/>} 
       {view==="APPROVALS"&&<ApprovalReview work={dashboard?.workItems||[]} approvals={approvals} load={runtime.workItem} decide={(id,action,feedback)=>act(()=>runtime.decideApproval(id,action,feedback))}/>} 
@@ -64,8 +65,11 @@ function ActivityView({activity}:{activity:Activity}){
       const e=row.execution;
       return <div className="run-row" key={e.executionId}><div><strong>{e.role} · {e.capability}</strong><span>{e.kind}{e.provider?` / ${e.provider}`:""}</span><time>Started {fmt(e.startedAt)}{e.finishedAt?` · Finished ${fmt(e.finishedAt)}`:""}</time></div><div><State state={e.success?"SUCCESS":e.finishedAt?"FAILED":"WORKING"}/></div>{e.error&&<p className="run-error">{e.error}</p>}</div>;
      }
-     const r=row.run!;
-     return <div className="run-row" key={r.runId}><div><strong>{r.agent} · {eventLabel(r.taskType)}</strong><span>{r.provider} / {r.model}</span><time>Started {fmt(r.startedAt)}{r.finishedAt?` · Finished ${fmt(r.finishedAt)}`:""}</time></div><div><State state={r.success?"SUCCESS":r.finishedAt?"FAILED":"WORKING"}/><small>{r.escalationOccurred?"Escalated":"Direct"} · {r.tokenUsage??"—"} tokens</small></div>{r.error&&<p className="run-error">{r.error}</p>}</div>;
+     if("run" in row && row.run){
+      const r=row.run;
+      return <div className="run-row" key={r.runId}><div><strong>{r.agent} · {eventLabel(r.taskType)}</strong><span>{r.provider} / {r.model}</span><time>Started {fmt(r.startedAt)}{r.finishedAt?` · Finished ${fmt(r.finishedAt)}`:""}</time></div><div><State state={r.success?"SUCCESS":r.finishedAt?"FAILED":"WORKING"}/><small>{r.escalationOccurred?"Escalated":"Direct"} · {r.tokenUsage??"—"} tokens</small></div>{r.error&&<p className="run-error">{r.error}</p>}</div>;
+     }
+     return null;
     })}
    </Feed>
   </article>
