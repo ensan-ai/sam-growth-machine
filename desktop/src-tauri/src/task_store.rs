@@ -2,12 +2,13 @@ use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::path::{Path, PathBuf};
+use std::{fs, path::{Path, PathBuf}};
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct TaskStore {
     path: PathBuf,
+    shared_state_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,12 +83,23 @@ pub struct TaskPreparation {
 
 impl TaskStore {
     pub fn new(path: impl AsRef<Path>) -> Result<Self, String> {
-        let path = path.as_ref().to_path_buf();
+        Self::new_internal(path.as_ref().to_path_buf(), None)
+    }
+
+    pub fn new_with_shared_state(path: impl AsRef<Path>, shared_state_path: impl AsRef<Path>) -> Result<Self, String> {
+        Self::new_internal(path.as_ref().to_path_buf(), Some(shared_state_path.as_ref().to_path_buf()))
+    }
+
+    fn new_internal(path: PathBuf, shared_state_path: Option<PathBuf>) -> Result<Self, String> {
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        let store = Self { path };
+        if let Some(parent) = shared_state_path.as_ref().and_then(|p| p.parent()) {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let store = Self { path, shared_state_path };
         store.init()?;
+        store.project_shared_state()?;
         Ok(store)
     }
 
@@ -365,7 +377,39 @@ CREATE INDEX IF NOT EXISTS idx_command_task_events_task ON command_task_events(t
         self.open()?.execute("UPDATE command_tasks SET status='DONE',completed_at=?2,blocked_reason=NULL,updated_at=?2 WHERE task_id=?1", params![task_id, now]).map_err(|e| e.to_string())?;
         self.record_event(task_id, "task.completed", actor, json!({}))?;
         self.auto_unblock_dependents(task_id)?;
+        self.project_shared_state()?;
         self.get(task_id)
+    }
+
+    pub fn project_shared_state(&self) -> Result<(), String> {
+        let Some(path) = self.shared_state_path.as_ref() else { return Ok(()); };
+        let tasks = self.list()?;
+        let mut preparations = Vec::new();
+        for task in &tasks {
+            if let Some(preparation) = self.preparation(&task.task_id)? {
+                preparations.push(preparation);
+            }
+        }
+        let recent_events = self.events(None)?;
+        let active_tasks = tasks.iter().filter(|t| t.status != "DONE").cloned().collect::<Vec<_>>();
+        let payload = json!({
+            "schema_version": 1,
+            "generated_at": Utc::now().to_rfc3339(),
+            "source_of_truth": "SQLITE",
+            "projection_role": "shared operational state for Command Center agents",
+            "tasks": tasks,
+            "active_tasks": active_tasks,
+            "preparations": preparations,
+            "recent_events": recent_events
+        });
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| format!("Cannot create shared state directory: {e}"))?;
+        }
+        let temporary = path.with_extension("json.tmp");
+        fs::write(&temporary, serde_json::to_vec_pretty(&payload).map_err(|e| e.to_string())?)
+            .map_err(|e| format!("Cannot write shared state projection: {e}"))?;
+        fs::rename(&temporary, path).map_err(|e| format!("Cannot publish shared state projection: {e}"))?;
+        Ok(())
     }
 
     fn refresh_block_state(&self, task_id: &str) -> Result<(), String> {
@@ -427,6 +471,9 @@ CREATE INDEX IF NOT EXISTS idx_command_task_events_task ON command_task_events(t
             "INSERT INTO command_task_events(event_id,task_id,event_type,actor,detail,created_at) VALUES(?1,?2,?3,?4,?5,?6)",
             params![format!("task-event-{}", Uuid::new_v4()), task_id, event_type, actor, detail.to_string(), Utc::now().to_rfc3339()]
         ).map_err(|e| e.to_string())?;
+        if !event_type.starts_with("agent.") {
+            self.project_shared_state()?;
+        }
         Ok(())
     }
 }
