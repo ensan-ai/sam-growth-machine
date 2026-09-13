@@ -11,3 +11,35 @@ export type SystemEvent = { eventId:string; workItemId?:string; eventType:string
 export type WorkDetail = { workItem:WorkItem; artifacts:Artifact[]; handoffs:Handoff[]; approvals:Approval[]; runs:AgentRun[]; events:SystemEvent[]; executions?:Execution[] };
 export type Dashboard = { companyState:string; providerStatus:ProviderStatus; activeAgents:string[]; waitingApprovals:number; blockedWork:number; workItems:WorkItem[] };
 export type Activity = { runs:AgentRun[]; events:SystemEvent[]; executions?:Execution[] };
+
+export type CommandTaskStatus = "BLOCKED"|"TODO"|"IN_PROGRESS"|"REVIEW"|"DONE";
+export type CommandExecutionMode = "AGENT"|"HUMAN"|"PAIR";
+export type CommandTask = {
+  taskId:string;
+  title:string;
+  description:string;
+  status:CommandTaskStatus;
+  executionMode:CommandExecutionMode;
+  owner:string;
+  milestone?:string;
+  priority:number;
+  dependencyIds:string[];
+  blockedReason?:string;
+  preparedAt?:string;
+  startedAt?:string;
+  reviewAt?:string;
+  completedAt?:string;
+  promptMarkdown?:string;
+  createdAt:string;
+  updatedAt:string;
+};
+export type CreateCommandTask = {
+  title:string;
+  description?:string;
+  owner?:string;
+  executionMode?:CommandExecutionMode;
+  milestone?:string;
+  priority?:number;
+  dependencyIds?:string[];
+};
+export type CommandTaskEvent = { eventId:string; taskId:string; eventType:string; actor:string; detail:unknown; createdAt:string };
