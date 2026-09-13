@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, CircleDot, Clock3, Play, Plus, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { runtime } from "../services/runtime";
 import type { CommandExecutionMode, CommandTask, CommandTaskStatus } from "../types";
+import "./TaskCommandCenter.css";
 
 const lanes: {status:CommandTaskStatus; label:string; hint:string}[] = [
   {status:"BLOCKED", label:"Blocked", hint:"Waiting on dependencies"},
