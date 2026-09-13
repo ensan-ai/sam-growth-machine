@@ -17,7 +17,8 @@ export function ApprovalReview({work,approvals,load,decide}:Props){
  const visual=latest("NO_VISUAL_REQUIRED")||latest("CREATIVE_PACKAGE");
  const pack=latest("PUBLISH_PACKAGE");
  const payload=object(pack?.payload);
- const platforms=list(payload.target_platforms?.length?payload.target_platforms:payload.intended_platforms);
+ const targetPlatforms=Array.isArray(payload.target_platforms)&&payload.target_platforms.length?payload.target_platforms:payload.intended_platforms;
+ const platforms=list(targetPlatforms);
  const noVisual=visual?.artifactType==="NO_VISUAL_REQUIRED";
  const flags=[...list(payload.approval_sensitive_flags),...list(object(visual?.payload).approval_sensitive_items),...list(object(draft?.payload).claims_requiring_verification),...(noVisual?["NO VISUAL REQUIRED"]: [])];
  const act=async(action:"APPROVE"|"REQUEST_REVISION"|"REJECT")=>{if(!id||pending)return;setPending(true);try{await decide(id,action,feedback||undefined);}finally{setPending(false);}};
