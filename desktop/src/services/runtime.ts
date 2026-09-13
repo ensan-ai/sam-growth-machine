@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Activity, Approval, CommandTask, CommandTaskEvent, CommandTaskPreparation, CreateCommandTask, Dashboard, Employee, PrepareCommandTaskResult, ProviderStatus, Settings, WorkDetail, WorkItem } from "../types";
 
+const invokePrepare = (taskId:string) => invoke<PrepareCommandTaskResult>("prepare_command_task", { taskId });
+
 export const runtime = {
   dashboard: () => invoke<Dashboard>("get_dashboard"),
   team: () => invoke<Employee[]>("get_team"),
@@ -18,9 +20,18 @@ export const runtime = {
 
   commandTasks: () => invoke<CommandTask[]>("get_command_tasks"),
   commandTaskEvents: (taskId?:string) => invoke<CommandTaskEvent[]>("get_command_task_events", { taskId }),
-  commandTaskPreparation: (taskId:string) => invoke<CommandTaskPreparation|undefined>("get_command_task_preparation", { taskId }),
+  commandTaskPreparation: (taskId:string) => invoke<CommandTaskPreparation|null>("get_command_task_preparation", { taskId }),
   createCommandTask: (request:CreateCommandTask) => invoke<CommandTask>("create_command_task", { request }),
-  prepareCommandTask: (taskId:string) => invoke<PrepareCommandTaskResult>("prepare_command_task", { taskId }),
+  prepareCommandTask: async (taskId:string) => {
+    const first=await invokePrepare(taskId);
+    if(first.preparation.state!=="NEEDS_OPERATOR_INPUT") return first;
+    const question=first.preparation.operatorQuestion || "The preparation agents need an operator decision before they can continue.";
+    const recommendation=first.preparation.operatorRecommendation ? `\n\nRecommendation: ${first.preparation.operatorRecommendation}` : "";
+    const decision=window.prompt(`${question}${recommendation}\n\nEnter your decision:`);
+    if(!decision?.trim()) return first;
+    await invoke<CommandTaskPreparation>("answer_command_task_preparation", { taskId,decision:decision.trim() });
+    return invokePrepare(taskId);
+  },
   answerCommandTaskPreparation: (taskId:string,decision:string) => invoke<CommandTaskPreparation>("answer_command_task_preparation", { taskId,decision }),
   startCommandTask: (taskId:string) => invoke<CommandTask>("start_command_task", { taskId }),
   reviewCommandTask: (taskId:string) => invoke<CommandTask>("review_command_task", { taskId }),
