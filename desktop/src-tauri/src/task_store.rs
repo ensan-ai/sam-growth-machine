@@ -1,7 +1,7 @@
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -60,8 +60,24 @@ pub struct TaskEvent {
     pub task_id: String,
     pub event_type: String,
     pub actor: String,
-    pub detail: serde_json::Value,
+    pub detail: Value,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskPreparation {
+    pub task_id: String,
+    pub state: String,
+    pub explorer_output: Option<Value>,
+    pub researcher_output: Option<Value>,
+    pub orchestrator_output: Option<Value>,
+    pub operator_question: Option<String>,
+    pub operator_recommendation: Option<String>,
+    pub operator_decision: Option<String>,
+    pub error: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 impl TaskStore {
@@ -116,6 +132,20 @@ CREATE TABLE IF NOT EXISTS command_task_events (
   actor TEXT NOT NULL,
   detail TEXT NOT NULL,
   created_at TEXT NOT NULL,
+  FOREIGN KEY(task_id) REFERENCES command_tasks(task_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS command_task_preparations (
+  task_id TEXT PRIMARY KEY,
+  state TEXT NOT NULL,
+  explorer_output TEXT,
+  researcher_output TEXT,
+  orchestrator_output TEXT,
+  operator_question TEXT,
+  operator_recommendation TEXT,
+  operator_decision TEXT,
+  error TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
   FOREIGN KEY(task_id) REFERENCES command_tasks(task_id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_command_tasks_status ON command_tasks(status);
@@ -176,6 +206,23 @@ CREATE INDEX IF NOT EXISTS idx_command_task_events_task ON command_task_events(t
         rows.map(|row| row.map_err(|e| e.to_string())).collect()
     }
 
+    pub fn preparation(&self, task_id: &str) -> Result<Option<TaskPreparation>, String> {
+        self.open()?.query_row(
+            "SELECT task_id,state,explorer_output,researcher_output,orchestrator_output,operator_question,operator_recommendation,operator_decision,error,created_at,updated_at FROM command_task_preparations WHERE task_id=?1",
+            [task_id],
+            |r| {
+                Ok(TaskPreparation {
+                    task_id: r.get(0)?, state: r.get(1)?,
+                    explorer_output: parse_optional_json(r.get::<_, Option<String>>(2)?),
+                    researcher_output: parse_optional_json(r.get::<_, Option<String>>(3)?),
+                    orchestrator_output: parse_optional_json(r.get::<_, Option<String>>(4)?),
+                    operator_question: r.get(5)?, operator_recommendation: r.get(6)?, operator_decision: r.get(7)?,
+                    error: r.get(8)?, created_at: r.get(9)?, updated_at: r.get(10)?,
+                })
+            }
+        ).optional().map_err(|e| e.to_string())
+    }
+
     pub fn create(&self, request: &CreateCommandTaskRequest) -> Result<CommandTask, String> {
         if request.title.trim().is_empty() { return Err("Task title is required".into()); }
         if !matches!(request.execution_mode.as_str(), "AGENT" | "HUMAN" | "PAIR") {
@@ -209,27 +256,83 @@ CREATE INDEX IF NOT EXISTS idx_command_task_events_task ON command_task_events(t
             tx.execute("INSERT INTO command_task_dependencies(task_id,depends_on_task_id) VALUES(?1,?2)", params![task_id, dep]).map_err(|e| e.to_string())?;
         }
         tx.commit().map_err(|e| e.to_string())?;
-        self.event(&task_id, "task.created", "sam", json!({"status": status, "dependencies": request.dependency_ids}))?;
+        self.record_event(&task_id, "task.created", "sam", json!({"status": status, "dependencies": request.dependency_ids}))?;
         self.get(&task_id)
     }
 
-    pub fn prepare(&self, task_id: &str, actor: &str) -> Result<CommandTask, String> {
+    pub fn begin_preparation(&self, task_id: &str, actor: &str) -> Result<CommandTask, String> {
         self.refresh_block_state(task_id)?;
         let task = self.get(task_id)?;
         if task.status == "BLOCKED" {
-            self.event(task_id, "task.prepare_blocked", actor, json!({"reason": task.blocked_reason}))?;
-            return Ok(task);
+            self.record_event(task_id, "task.prepare_blocked", actor, json!({"reason": task.blocked_reason}))?;
+            return Err(task.blocked_reason.unwrap_or_else(|| "Task is blocked".into()));
         }
         if task.status != "TODO" { return Err(format!("Only TODO tasks can be prepared; {task_id} is {}", task.status)); }
-        let prompt = format!(
-            "# TASK {id}\n\n## Objective\n{title}\n\n## Description\n{description}\n\n## Execution mode\n{mode}\n\n## Owner\n{owner}\n\n## Milestone\n{milestone}\n\n## Dependencies\n{deps}\n\n## Operating rule\nStudy the task context before execution. Do not invent missing requirements. Surface operator decisions when they materially change the outcome. Preserve an auditable event trail and return a reviewable artifact before completion.\n",
-            id=task.task_id, title=task.title, description=if task.description.is_empty(){"No additional description supplied."}else{&task.description}, mode=task.execution_mode,
-            owner=task.owner, milestone=task.milestone.clone().unwrap_or_else(|| "Unassigned".into()), deps=if task.dependency_ids.is_empty(){"None".into()}else{task.dependency_ids.join(", ")}
-        );
+        if task.prepared_at.is_some() { return Err(format!("Task {task_id} is already prepared")); }
         let now = Utc::now().to_rfc3339();
-        self.open()?.execute("UPDATE command_tasks SET prepared_at=?2,prompt_markdown=?3,updated_at=?2 WHERE task_id=?1", params![task_id, now, prompt]).map_err(|e| e.to_string())?;
-        self.event(task_id, "task.prepared", actor, json!({"promptGenerated": true}))?;
+        self.open()?.execute(
+            "INSERT INTO command_task_preparations(task_id,state,created_at,updated_at) VALUES(?1,'PREPARING',?2,?2) ON CONFLICT(task_id) DO UPDATE SET state='PREPARING',error=NULL,updated_at=excluded.updated_at",
+            params![task_id, now]
+        ).map_err(|e| e.to_string())?;
+        self.record_event(task_id, "task.prepare_started", actor, json!({}))?;
+        Ok(task)
+    }
+
+    pub fn save_prepare_role_output(&self, task_id: &str, role: &str, output: &Value) -> Result<(), String> {
+        let column = match role {
+            "explorer" => "explorer_output",
+            "researcher" => "researcher_output",
+            "orchestrator" => "orchestrator_output",
+            _ => return Err(format!("Unsupported preparation role {role}")),
+        };
+        let sql = format!("UPDATE command_task_preparations SET {column}=?2,updated_at=?3 WHERE task_id=?1");
+        self.open()?.execute(&sql, params![task_id, output.to_string(), Utc::now().to_rfc3339()]).map_err(|e| e.to_string())?;
+        self.record_event(task_id, &format!("prepare.{role}.completed"), role, json!({"persisted": true}))?;
+        Ok(())
+    }
+
+    pub fn require_operator_input(&self, task_id: &str, question: &str, recommendation: Option<&str>) -> Result<TaskPreparation, String> {
+        self.open()?.execute(
+            "UPDATE command_task_preparations SET state='NEEDS_OPERATOR_INPUT',operator_question=?2,operator_recommendation=?3,error=NULL,updated_at=?4 WHERE task_id=?1",
+            params![task_id, question, recommendation, Utc::now().to_rfc3339()]
+        ).map_err(|e| e.to_string())?;
+        self.record_event(task_id, "prepare.operator_input_required", "orchestrator", json!({"question": question, "recommendation": recommendation}))?;
+        self.preparation(task_id)?.ok_or_else(|| "Preparation state disappeared".into())
+    }
+
+    pub fn set_operator_decision(&self, task_id: &str, decision: &str) -> Result<TaskPreparation, String> {
+        if decision.trim().is_empty() { return Err("Operator decision cannot be empty".into()); }
+        let now = Utc::now().to_rfc3339();
+        let changed = self.open()?.execute(
+            "UPDATE command_task_preparations SET state='PREPARING',operator_decision=?2,operator_question=NULL,operator_recommendation=NULL,error=NULL,updated_at=?3 WHERE task_id=?1",
+            params![task_id, decision.trim(), now]
+        ).map_err(|e| e.to_string())?;
+        if changed == 0 { return Err(format!("Task {task_id} has no preparation session")); }
+        self.record_event(task_id, "prepare.operator_decision", "sam", json!({"decision": decision.trim()}))?;
+        self.preparation(task_id)?.ok_or_else(|| "Preparation state disappeared".into())
+    }
+
+    pub fn finalize_preparation(&self, task_id: &str, prompt_markdown: &str, orchestrator_output: &Value, actor: &str) -> Result<CommandTask, String> {
+        let now = Utc::now().to_rfc3339();
+        let conn = self.open()?;
+        conn.execute(
+            "UPDATE command_task_preparations SET state='PREPARED',orchestrator_output=?2,operator_question=NULL,operator_recommendation=NULL,error=NULL,updated_at=?3 WHERE task_id=?1",
+            params![task_id, orchestrator_output.to_string(), now]
+        ).map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE command_tasks SET prepared_at=?2,prompt_markdown=?3,updated_at=?2 WHERE task_id=?1",
+            params![task_id, now, prompt_markdown]
+        ).map_err(|e| e.to_string())?;
+        self.record_event(task_id, "task.prepared", actor, json!({"promptGenerated": true, "method": "explorer+researcher+orchestrator"}))?;
         self.get(task_id)
+    }
+
+    pub fn fail_preparation(&self, task_id: &str, role: &str, error: &str) -> Result<(), String> {
+        self.open()?.execute(
+            "UPDATE command_task_preparations SET state='FAILED',error=?2,updated_at=?3 WHERE task_id=?1",
+            params![task_id, error, Utc::now().to_rfc3339()]
+        ).map_err(|e| e.to_string())?;
+        self.record_event(task_id, "task.prepare_failed", role, json!({"error": error}))
     }
 
     pub fn start(&self, task_id: &str, actor: &str) -> Result<CommandTask, String> {
@@ -238,9 +341,11 @@ CREATE INDEX IF NOT EXISTS idx_command_task_events_task ON command_task_events(t
         if task.status == "BLOCKED" { return Err(task.blocked_reason.unwrap_or_else(|| "Task is blocked".into())); }
         if task.status != "TODO" { return Err(format!("Only TODO tasks can start; {task_id} is {}", task.status)); }
         if task.prepared_at.is_none() { return Err("Prepare the task before starting it".into()); }
+        let prep = self.preparation(task_id)?.ok_or("Task is missing its preparation record")?;
+        if prep.state != "PREPARED" { return Err(format!("Preparation is {}, not PREPARED", prep.state)); }
         let now = Utc::now().to_rfc3339();
         self.open()?.execute("UPDATE command_tasks SET status='IN_PROGRESS',started_at=?2,updated_at=?2 WHERE task_id=?1", params![task_id, now]).map_err(|e| e.to_string())?;
-        self.event(task_id, "task.started", actor, json!({"owner": task.owner, "executionMode": task.execution_mode}))?;
+        self.record_event(task_id, "task.started", actor, json!({"owner": task.owner, "executionMode": task.execution_mode}))?;
         self.get(task_id)
     }
 
@@ -249,7 +354,7 @@ CREATE INDEX IF NOT EXISTS idx_command_task_events_task ON command_task_events(t
         if task.status != "IN_PROGRESS" { return Err(format!("Only IN_PROGRESS tasks can enter review; {task_id} is {}", task.status)); }
         let now = Utc::now().to_rfc3339();
         self.open()?.execute("UPDATE command_tasks SET status='REVIEW',review_at=?2,updated_at=?2 WHERE task_id=?1", params![task_id, now]).map_err(|e| e.to_string())?;
-        self.event(task_id, "task.review_requested", actor, json!({}))?;
+        self.record_event(task_id, "task.review_requested", actor, json!({}))?;
         self.get(task_id)
     }
 
@@ -258,7 +363,7 @@ CREATE INDEX IF NOT EXISTS idx_command_task_events_task ON command_task_events(t
         if task.status != "REVIEW" { return Err(format!("Only REVIEW tasks can complete; {task_id} is {}", task.status)); }
         let now = Utc::now().to_rfc3339();
         self.open()?.execute("UPDATE command_tasks SET status='DONE',completed_at=?2,blocked_reason=NULL,updated_at=?2 WHERE task_id=?1", params![task_id, now]).map_err(|e| e.to_string())?;
-        self.event(task_id, "task.completed", actor, json!({}))?;
+        self.record_event(task_id, "task.completed", actor, json!({}))?;
         self.auto_unblock_dependents(task_id)?;
         self.get(task_id)
     }
@@ -270,7 +375,7 @@ CREATE INDEX IF NOT EXISTS idx_command_task_events_task ON command_task_events(t
         let conn = self.open()?;
         if unresolved.is_empty() && task.status == "BLOCKED" {
             conn.execute("UPDATE command_tasks SET status='TODO',blocked_reason=NULL,updated_at=?2 WHERE task_id=?1", params![task_id, Utc::now().to_rfc3339()]).map_err(|e| e.to_string())?;
-            self.event(task_id, "task.auto_unblocked", "system", json!({}))?;
+            self.record_event(task_id, "task.auto_unblocked", "system", json!({}))?;
         } else if !unresolved.is_empty() {
             conn.execute("UPDATE command_tasks SET status='BLOCKED',blocked_reason=?2,updated_at=?3 WHERE task_id=?1", params![task_id, format!("Waiting for {}", unresolved.join(", ")), Utc::now().to_rfc3339()]).map_err(|e| e.to_string())?;
         }
@@ -316,11 +421,15 @@ CREATE INDEX IF NOT EXISTS idx_command_task_events_task ON command_task_events(t
         Ok(unresolved)
     }
 
-    fn event(&self, task_id: &str, event_type: &str, actor: &str, detail: serde_json::Value) -> Result<(), String> {
+    pub fn record_event(&self, task_id: &str, event_type: &str, actor: &str, detail: Value) -> Result<(), String> {
         self.open()?.execute(
             "INSERT INTO command_task_events(event_id,task_id,event_type,actor,detail,created_at) VALUES(?1,?2,?3,?4,?5,?6)",
             params![format!("task-event-{}", Uuid::new_v4()), task_id, event_type, actor, detail.to_string(), Utc::now().to_rfc3339()]
         ).map_err(|e| e.to_string())?;
         Ok(())
     }
+}
+
+fn parse_optional_json(raw: Option<String>) -> Option<Value> {
+    raw.and_then(|value| serde_json::from_str(&value).ok())
 }
