@@ -305,7 +305,7 @@ version=excluded.version,definition_status=excluded.definition_status"#,
     }
 
     pub fn events(&self, work_item_id:Option<&str>) -> Result<Vec<SystemEventRecord>,String> {
-        let conn=self.open()?; let sql=if work_item_id.is_some(){"SELECT event_id,work_item_id,event_type,actor,detail,created_at FROM system_events WHERE work_item_id=?1 ORDER BY created_at"}else{"SELECT event_id,work_item_id,event_type,actor,detail,created_at FROM system_events ORDER BY created_at DESC LIMIT 200"};
+        let conn=self.open()?; let sql=if work_item_id.is_some(){"SELECT event_id,work_item_id,event_type,actor,detail,created_at FROM system_events WHERE work_item_id=?1 ORDER BY created_at DESC"}else{"SELECT event_id,work_item_id,event_type,actor,detail,created_at FROM system_events ORDER BY created_at DESC LIMIT 200"};
         let mut stmt=conn.prepare(sql).map_err(|e|e.to_string())?;
         let result=if let Some(id)=work_item_id { let mapped=stmt.query_map([id],event_row).map_err(|e|e.to_string())?; rows(mapped) } else { let mapped=stmt.query_map([],event_row).map_err(|e|e.to_string())?; rows(mapped) };
         result
@@ -370,7 +370,7 @@ version=excluded.version,definition_status=excluded.definition_status"#,
     }
     pub fn executions(&self, work_item_id:Option<&str>) -> Result<Vec<ExecutionRecord>,String> {
         let conn=self.open()?;
-        let sql=if work_item_id.is_some(){"SELECT execution_id,work_item_id,role,capability,kind,provider,model,started_at,finished_at,success,error FROM executions WHERE work_item_id=?1 ORDER BY started_at"}else{"SELECT execution_id,work_item_id,role,capability,kind,provider,model,started_at,finished_at,success,error FROM executions ORDER BY started_at DESC LIMIT 200"};
+        let sql=if work_item_id.is_some(){"SELECT execution_id,work_item_id,role,capability,kind,provider,model,started_at,finished_at,success,error FROM executions WHERE work_item_id=?1 ORDER BY started_at DESC"}else{"SELECT execution_id,work_item_id,role,capability,kind,provider,model,started_at,finished_at,success,error FROM executions ORDER BY started_at DESC LIMIT 200"};
         let mut stmt=conn.prepare(sql).map_err(|e|e.to_string())?;
         if let Some(id)=work_item_id { let mapped=stmt.query_map([id], exec_row).map_err(|e|e.to_string())?; rows(mapped) } else { let mapped=stmt.query_map([], exec_row).map_err(|e|e.to_string())?; rows(mapped) }
     }
