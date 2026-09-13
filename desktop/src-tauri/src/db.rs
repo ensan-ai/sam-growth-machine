@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS employees (
 CREATE TABLE IF NOT EXISTS work_items (
   work_item_id TEXT PRIMARY KEY, title TEXT NOT NULL, state TEXT NOT NULL,
   current_owner TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-  blocked_reason TEXT
+  blocked_reason TEXT, resume_state TEXT
 );
 CREATE TABLE IF NOT EXISTS artifacts (
   artifact_id TEXT PRIMARY KEY, artifact_type TEXT NOT NULL, work_item_id TEXT NOT NULL,
@@ -81,11 +81,25 @@ CREATE TABLE IF NOT EXISTS performance_snapshots (
   window_name TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS learning_records (
+  learning_id TEXT PRIMARY KEY, source_work_item_id TEXT NOT NULL,
+  opportunity_fingerprint TEXT NOT NULL, cycle_decision TEXT NOT NULL,
+  data_quality TEXT NOT NULL, recommended_attention TEXT, payload TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS executions (
+  execution_id TEXT PRIMARY KEY, logical_key TEXT NOT NULL UNIQUE,
+  work_item_id TEXT, role TEXT NOT NULL, capability TEXT NOT NULL, kind TEXT NOT NULL,
+  provider TEXT, model TEXT, started_at TEXT NOT NULL, finished_at TEXT,
+  success INTEGER NOT NULL DEFAULT 0, error TEXT
+);
 "#).map_err(|e| e.to_string())?;
+        let _ = conn.execute("ALTER TABLE work_items ADD COLUMN resume_state TEXT", []);
         for (key, value) in [
             ("ollama_endpoint", "http://localhost:11434"), ("ollama_model", "qwen3:14b"),
             ("openai_model", "gpt-5.6"), ("allow_openai_escalation", "false"),
-            ("company_control", "RUNNING")
+            ("company_control", "RUNNING"), ("observe_quality", "UNAVAILABLE"),
+            ("brain_force_fail", "false"), ("publish_force_fail", "false")
         ] {
             conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?1,?2)", params![key, value]).map_err(|e| e.to_string())?;
         }
@@ -120,7 +134,7 @@ version=excluded.version,definition_status=excluded.definition_status"#,
     pub fn settings(&self) -> Result<RuntimeSettings, String> {
         let conn = self.open()?;
         let get = |key: &str| -> Result<String,String> { conn.query_row("SELECT value FROM settings WHERE key=?1", [key], |r| r.get(0)).map_err(|e| e.to_string()) };
-        Ok(RuntimeSettings { ollama_endpoint:get("ollama_endpoint")?, ollama_model:get("ollama_model")?, openai_model:get("openai_model")?, allow_openai_escalation:get("allow_openai_escalation")? == "true", company_control:get("company_control")? })
+        Ok(RuntimeSettings { ollama_endpoint:get("ollama_endpoint")?, ollama_model:get("ollama_model")?, openai_model:get("openai_model")?, allow_openai_escalation:get("allow_openai_escalation")? == "true", company_control:get("company_control")?, observe_quality: get("observe_quality").unwrap_or_else(|_| "UNAVAILABLE".into()), brain_force_fail: get("brain_force_fail").unwrap_or_else(|_| "false".into()) == "true", publish_force_fail: get("publish_force_fail").unwrap_or_else(|_| "false".into()) == "true" })
     }
 
     pub fn save_settings(&self, request: &SaveSettingsRequest) -> Result<RuntimeSettings, String> {
@@ -138,22 +152,85 @@ version=excluded.version,definition_status=excluded.definition_status"#,
     pub fn create_work_item(&self, title: &str, signal: &str) -> Result<WorkItemSummary, String> {
         let id = format!("work-{}", Uuid::new_v4()); let now = Utc::now().to_rfc3339();
         let conn = self.open()?;
-        conn.execute("INSERT INTO work_items VALUES(?1,?2,'NEW','saly',?3,?3,NULL)",params![id,title,now]).map_err(|e| e.to_string())?;
+        conn.execute("INSERT INTO work_items(work_item_id,title,state,current_owner,created_at,updated_at,blocked_reason,resume_state) VALUES(?1,?2,'NEW','saly',?3,?3,NULL,NULL)",params![id,title,now]).map_err(|e| e.to_string())?;
         self.insert_artifact(&id,"RESEARCH_SIGNAL",1,"sam",None,json!({"signal":signal,"source":"HUMAN_REQUEST","created_at":now}))?;
         self.event(Some(&id),"work_item.created","sam",json!({"title":title}))?;
         self.work_item(&id)
     }
 
     pub fn update_work_item(&self, id: &str, state: &str, owner: &str, blocked_reason: Option<&str>) -> Result<(), String> {
-        self.open()?.execute("UPDATE work_items SET state=?2,current_owner=?3,blocked_reason=?4,updated_at=?5 WHERE work_item_id=?1",params![id,state,owner,blocked_reason,Utc::now().to_rfc3339()]).map_err(|e| e.to_string())?; Ok(())
+        self.update_work_item_with_resume(id, state, owner, blocked_reason, None)
+    }
+
+    pub fn is_valid_resume_state(state: &str) -> bool {
+        matches!(
+            state,
+            "RESEARCHED" | "SELECTED" | "STRATEGIZED" | "IN_PRODUCTION" | "REVISION_REQUIRED"
+                | "READY_FOR_APPROVAL" | "APPROVED" | "READY_TO_PUBLISH" | "PUBLISHED" | "MEASURING"
+        )
+    }
+
+    pub fn enter_blocked(&self, id: &str, owner: &str, reason: &str, resume_state: &str) -> Result<String, String> {
+        let current = self.work_item(id)?;
+        let resume = if current.state == "BLOCKED" {
+            match current.resume_state.as_deref() {
+                Some(existing) if Self::is_valid_resume_state(existing) => existing.to_string(),
+                _ => {
+                    if Self::is_valid_resume_state(resume_state) {
+                        resume_state.to_string()
+                    } else {
+                        return Err("BLOCKED requires a valid non-NEW, non-BLOCKED resume_state".into());
+                    }
+                }
+            }
+        } else if Self::is_valid_resume_state(resume_state) {
+            resume_state.to_string()
+        } else {
+            return Err(format!("Refusing to persist invalid resume_state '{resume_state}'"));
+        };
+        let owner = if current.state == "BLOCKED" { current.current_owner.clone() } else { owner.to_string() };
+        let now = Utc::now().to_rfc3339();
+        self.open()?.execute(
+            "UPDATE work_items SET state='BLOCKED', current_owner=?2, blocked_reason=?3, resume_state=?4, updated_at=?5 WHERE work_item_id=?1",
+            params![id, owner, reason, resume.as_str(), now],
+        ).map_err(|e| e.to_string())?;
+        Ok(resume)
+    }
+
+    pub fn update_work_item_with_resume(&self, id: &str, state: &str, owner: &str, blocked_reason: Option<&str>, resume_state: Option<&str>) -> Result<(), String> {
+        if state == "BLOCKED" {
+            let resume = resume_state.ok_or_else(|| "BLOCKED requires a valid resume_state".to_string())?;
+            self.enter_blocked(id, owner, blocked_reason.unwrap_or("blocked"), resume)?;
+            return Ok(());
+        }
+        self.open()?.execute(
+            "UPDATE work_items SET state=?2, current_owner=?3, blocked_reason=?4, resume_state=NULL, updated_at=?5 WHERE work_item_id=?1",
+            params![id, state, owner, blocked_reason, Utc::now().to_rfc3339()],
+        ).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn set_blocked_reason(&self, id: &str, reason: &str) -> Result<(), String> {
+        let changed = self.open()?.execute(
+            "UPDATE work_items SET blocked_reason=?2, updated_at=?3 WHERE work_item_id=?1 AND state='BLOCKED'",
+            params![id, reason, Utc::now().to_rfc3339()],
+        ).map_err(|e| e.to_string())?;
+        if changed == 0 {
+            return Err("blocked_reason can only be updated while the work item is BLOCKED".into());
+        }
+        Ok(())
+    }
+
+    pub fn set_setting(&self, key: &str, value: &str) -> Result<(), String> {
+        self.open()?.execute("INSERT INTO settings(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value", params![key, value]).map_err(|e| e.to_string())?; Ok(())
     }
 
     pub fn work_item(&self, id: &str) -> Result<WorkItemSummary, String> {
-        self.open()?.query_row("SELECT work_item_id,title,state,current_owner,created_at,updated_at,blocked_reason FROM work_items WHERE work_item_id=?1",[id], work_row).map_err(|e| e.to_string())
+        self.open()?.query_row("SELECT work_item_id,title,state,current_owner,created_at,updated_at,blocked_reason,resume_state FROM work_items WHERE work_item_id=?1",[id], work_row).map_err(|e| e.to_string())
     }
 
     pub fn work_items(&self) -> Result<Vec<WorkItemSummary>, String> {
-        let conn=self.open()?; let mut stmt=conn.prepare("SELECT work_item_id,title,state,current_owner,created_at,updated_at,blocked_reason FROM work_items ORDER BY updated_at DESC").map_err(|e|e.to_string())?;
+        let conn=self.open()?; let mut stmt=conn.prepare("SELECT work_item_id,title,state,current_owner,created_at,updated_at,blocked_reason,resume_state FROM work_items ORDER BY updated_at DESC").map_err(|e|e.to_string())?;
         let mapped=stmt.query_map([],work_row).map_err(|e|e.to_string())?;
         let result=rows(mapped);
         result
@@ -163,7 +240,7 @@ version=excluded.version,definition_status=excluded.definition_status"#,
         let id=format!("artifact-{}",Uuid::new_v4()); let now=Utc::now().to_rfc3339(); let payload_text=payload.to_string();
         let conn=self.open()?;
         conn.execute("INSERT INTO artifacts VALUES(?1,?2,?3,?4,?5,?6,?7,?8)",params![id,artifact_type,work_item_id,version,producer,now,supersedes,payload_text]).map_err(|e|e.to_string())?;
-        if version>1 && matches!(artifact_type,"CONTENT_DRAFT"|"CREATIVE_PACKAGE"|"PUBLISH_PACKAGE") {
+        if version>1 && matches!(artifact_type,"CONTENT_DRAFT"|"CREATIVE_PACKAGE"|"NO_VISUAL_REQUIRED"|"PUBLISH_PACKAGE"|"CONTENT_BRIEF") {
             conn.execute("UPDATE approvals SET superseded_at=?2 WHERE work_item_id=?1 AND superseded_at IS NULL AND status='APPROVED'",params![work_item_id,now]).map_err(|e|e.to_string())?;
         }
         Ok(ArtifactRecord{artifact_id:id,artifact_type:artifact_type.into(),work_item_id:work_item_id.into(),version,producer:producer.into(),created_at:now,supersedes:supersedes.map(str::to_string),payload})
@@ -228,7 +305,7 @@ version=excluded.version,definition_status=excluded.definition_status"#,
     }
 
     pub fn events(&self, work_item_id:Option<&str>) -> Result<Vec<SystemEventRecord>,String> {
-        let conn=self.open()?; let sql=if work_item_id.is_some(){"SELECT event_id,work_item_id,event_type,actor,detail,created_at FROM system_events WHERE work_item_id=?1 ORDER BY created_at"}else{"SELECT event_id,work_item_id,event_type,actor,detail,created_at FROM system_events ORDER BY created_at DESC LIMIT 200"};
+        let conn=self.open()?; let sql=if work_item_id.is_some(){"SELECT event_id,work_item_id,event_type,actor,detail,created_at FROM system_events WHERE work_item_id=?1 ORDER BY created_at DESC"}else{"SELECT event_id,work_item_id,event_type,actor,detail,created_at FROM system_events ORDER BY created_at DESC LIMIT 200"};
         let mut stmt=conn.prepare(sql).map_err(|e|e.to_string())?;
         let result=if let Some(id)=work_item_id { let mapped=stmt.query_map([id],event_row).map_err(|e|e.to_string())?; rows(mapped) } else { let mapped=stmt.query_map([],event_row).map_err(|e|e.to_string())?; rows(mapped) };
         result
@@ -253,19 +330,63 @@ version=excluded.version,definition_status=excluded.definition_status"#,
         result
     }
 
-    pub fn create_publication(&self,item:&str,receipt_id:&str)->Result<String,String>{let id=format!("publication-{}",Uuid::new_v4());self.open()?.execute("INSERT INTO publication_records VALUES(?1,?2,?3,'LINKEDIN',?4,'PUBLISHED',?5)",params![id,item,receipt_id,format!("mock://linkedin/{item}"),Utc::now().to_rfc3339()]).map_err(|e|e.to_string())?;Ok(id)}
+    pub fn create_publication(&self,item:&str,receipt_id:&str)->Result<String,String>{
+        self.create_publication_with_ref(item, receipt_id, "LOCAL_LEDGER", &format!("ledger://local/{item}"))
+    }
+    pub fn create_publication_with_ref(&self,item:&str,receipt_id:&str,platform:&str,external_reference:&str)->Result<String,String>{
+        let conn=self.open()?;
+        if let Ok(existing)=conn.query_row("SELECT publication_id FROM publication_records WHERE work_item_id=?1 AND external_reference=?2",[item,external_reference],|r|r.get::<_,String>(0)) {
+            return Ok(existing);
+        }
+        let id=format!("publication-{}",Uuid::new_v4());
+        conn.execute("INSERT INTO publication_records VALUES(?1,?2,?3,?4,?5,'PUBLISHED',?6)",params![id,item,receipt_id,platform,external_reference,Utc::now().to_rfc3339()]).map_err(|e|e.to_string())?;
+        Ok(id)
+    }
     pub fn create_snapshot(&self,item:&str,publication_id:&str,payload:&Value)->Result<String,String>{let id=format!("snapshot-{}",Uuid::new_v4());self.open()?.execute("INSERT INTO performance_snapshots VALUES(?1,?2,?3,'EARLY',?4,?5)",params![id,item,publication_id,payload.to_string(),Utc::now().to_rfc3339()]).map_err(|e|e.to_string())?;Ok(id)}
 
-    pub fn detail(&self,id:&str)->Result<WorkItemDetail,String>{Ok(WorkItemDetail{work_item:self.work_item(id)?,artifacts:self.artifacts(id)?,handoffs:self.handoffs(id)?,approvals:self.approvals(Some(id))?,runs:self.runs(Some(id))?,events:self.events(Some(id))?})}
+    pub fn insert_learning(&self, source_work_item_id:&str, payload:Value) -> Result<LearningRecord,String> {
+        let id=format!("learning-{}",Uuid::new_v4());
+        let now=Utc::now().to_rfc3339();
+        let fp=payload.get("opportunity_fingerprint").and_then(Value::as_str).unwrap_or("").to_string();
+        let decision=payload.get("cycle_decision").and_then(Value::as_str).unwrap_or("CONTINUE").to_string();
+        let quality=payload.get("data_quality").and_then(Value::as_str).unwrap_or("UNAVAILABLE").to_string();
+        let attention=payload.get("recommended_attention").and_then(Value::as_str).map(str::to_string);
+        self.open()?.execute("INSERT INTO learning_records VALUES(?1,?2,?3,?4,?5,?6,?7,?8)",params![id,source_work_item_id,fp,decision,quality,attention,payload.to_string(),now]).map_err(|e|e.to_string())?;
+        Ok(LearningRecord{learning_id:id,source_work_item_id:source_work_item_id.into(),opportunity_fingerprint:fp,cycle_decision:decision,data_quality:quality,recommended_attention:attention,payload,created_at:now})
+    }
+    pub fn recent_learning(&self, limit: i64) -> Result<Vec<LearningRecord>,String> {
+        let conn=self.open()?;
+        let mut stmt=conn.prepare("SELECT learning_id,source_work_item_id,opportunity_fingerprint,cycle_decision,data_quality,recommended_attention,payload,created_at FROM learning_records ORDER BY created_at DESC LIMIT ?1").map_err(|e|e.to_string())?;
+        let mapped=stmt.query_map([limit], learning_row).map_err(|e|e.to_string())?;
+        rows(mapped)
+    }
+    pub fn record_execution(&self, work_item_id:Option<&str>, role:&str, capability:&str, kind:&str, provider:Option<&str>, model:Option<&str>, success:bool, error:Option<&str>) -> Result<String,String> {
+        let id=format!("exec-{}",Uuid::new_v4());
+        let now=Utc::now().to_rfc3339();
+        let logical=format!("{}/{}/{}/{}/{}", work_item_id.unwrap_or("-"), capability, kind, now, Uuid::new_v4());
+        self.open()?.execute("INSERT INTO executions(execution_id,logical_key,work_item_id,role,capability,kind,provider,model,started_at,finished_at,success,error) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?9,?10,?11)",
+            params![id,logical,work_item_id,role,capability,kind,provider,model,now,success as i32,error]).map_err(|e|e.to_string())?;
+        Ok(id)
+    }
+    pub fn executions(&self, work_item_id:Option<&str>) -> Result<Vec<ExecutionRecord>,String> {
+        let conn=self.open()?;
+        let sql=if work_item_id.is_some(){"SELECT execution_id,work_item_id,role,capability,kind,provider,model,started_at,finished_at,success,error FROM executions WHERE work_item_id=?1 ORDER BY started_at DESC"}else{"SELECT execution_id,work_item_id,role,capability,kind,provider,model,started_at,finished_at,success,error FROM executions ORDER BY started_at DESC LIMIT 200"};
+        let mut stmt=conn.prepare(sql).map_err(|e|e.to_string())?;
+        if let Some(id)=work_item_id { let mapped=stmt.query_map([id], exec_row).map_err(|e|e.to_string())?; rows(mapped) } else { let mapped=stmt.query_map([], exec_row).map_err(|e|e.to_string())?; rows(mapped) }
+    }
+
+    pub fn detail(&self,id:&str)->Result<WorkItemDetail,String>{Ok(WorkItemDetail{work_item:self.work_item(id)?,artifacts:self.artifacts(id)?,handoffs:self.handoffs(id)?,approvals:self.approvals(Some(id))?,runs:self.runs(Some(id))?,events:self.events(Some(id))?,executions:self.executions(Some(id))?})}
     pub fn count_state(&self,state:&str)->Result<i64,String>{self.open()?.query_row("SELECT count(*) FROM work_items WHERE state=?1",[state],|r|r.get(0)).map_err(|e|e.to_string())}
 }
 
 fn rows<T>(mapped: rusqlite::MappedRows<'_, impl FnMut(&rusqlite::Row<'_>)->rusqlite::Result<T>>) -> Result<Vec<T>,String> { mapped.collect::<Result<Vec<_>,_>>().map_err(|e|e.to_string()) }
-fn work_row(r:&rusqlite::Row<'_>)->rusqlite::Result<WorkItemSummary>{Ok(WorkItemSummary{work_item_id:r.get(0)?,title:r.get(1)?,state:r.get(2)?,current_owner:r.get(3)?,created_at:r.get(4)?,updated_at:r.get(5)?,blocked_reason:r.get(6)?})}
+fn work_row(r:&rusqlite::Row<'_>)->rusqlite::Result<WorkItemSummary>{Ok(WorkItemSummary{work_item_id:r.get(0)?,title:r.get(1)?,state:r.get(2)?,current_owner:r.get(3)?,created_at:r.get(4)?,updated_at:r.get(5)?,blocked_reason:r.get(6)?,resume_state:r.get(7)?})}
 fn artifact_row(r:&rusqlite::Row<'_>)->rusqlite::Result<ArtifactRecord>{let text:String=r.get(7)?;Ok(ArtifactRecord{artifact_id:r.get(0)?,artifact_type:r.get(1)?,work_item_id:r.get(2)?,version:r.get(3)?,producer:r.get(4)?,created_at:r.get(5)?,supersedes:r.get(6)?,payload:serde_json::from_str(&text).unwrap_or(Value::Null)})}
 fn run_row(r:&rusqlite::Row<'_>)->rusqlite::Result<AgentRunRecord>{Ok(AgentRunRecord{run_id:r.get(0)?,work_item_id:r.get(1)?,agent:r.get(2)?,task_type:r.get(3)?,provider:r.get(4)?,model:r.get(5)?,started_at:r.get(6)?,finished_at:r.get(7)?,success:r.get::<_,i64>(8)?!=0,escalation_occurred:r.get::<_,i64>(9)?!=0,token_usage:r.get(10)?,estimated_api_cost:r.get(11)?,error:r.get(12)?})}
 fn event_row(r:&rusqlite::Row<'_>)->rusqlite::Result<SystemEventRecord>{let text:String=r.get(4)?;Ok(SystemEventRecord{event_id:r.get(0)?,work_item_id:r.get(1)?,event_type:r.get(2)?,actor:r.get(3)?,detail:serde_json::from_str(&text).unwrap_or(Value::Null),created_at:r.get(5)?})}
 fn approval_row(r:&rusqlite::Row<'_>)->rusqlite::Result<ApprovalRecord>{let scope:String=r.get(9)?;Ok(ApprovalRecord{approval_id:r.get(0)?,work_item_id:r.get(1)?,approver:r.get(2)?,content_artifact_id:r.get(3)?,content_version:r.get(4)?,creative_artifact_id:r.get(5)?,creative_version:r.get(6)?,package_artifact_id:r.get(7)?,package_version:r.get(8)?,platform_scope:serde_json::from_str(&scope).unwrap_or_default(),status:r.get(10)?,feedback:r.get(11)?,created_at:r.get(12)?,superseded_at:r.get(13)?})}
+fn learning_row(r:&rusqlite::Row<'_>)->rusqlite::Result<LearningRecord>{let text:String=r.get(6)?;Ok(LearningRecord{learning_id:r.get(0)?,source_work_item_id:r.get(1)?,opportunity_fingerprint:r.get(2)?,cycle_decision:r.get(3)?,data_quality:r.get(4)?,recommended_attention:r.get(5)?,payload:serde_json::from_str(&text).unwrap_or(Value::Null),created_at:r.get(7)?})}
+fn exec_row(r:&rusqlite::Row<'_>)->rusqlite::Result<ExecutionRecord>{Ok(ExecutionRecord{execution_id:r.get(0)?,work_item_id:r.get(1)?,role:r.get(2)?,capability:r.get(3)?,kind:r.get(4)?,provider:r.get(5)?,model:r.get(6)?,started_at:r.get(7)?,finished_at:r.get(8)?,success:r.get::<_,i64>(9)?!=0,error:r.get(10)?})}
 
 #[cfg(test)]
 mod tests {
@@ -282,5 +403,25 @@ mod tests {
         let retry=db.start_run("logical-run",&work.work_item_id,"brain","writing","OLLAMA_PROVIDER","qwen3:14b").unwrap();assert!(retry.is_some());
         assert!(db.start_run("logical-run",&work.work_item_id,"brain","writing","OLLAMA_PROVIDER","qwen3:14b").unwrap().is_none());
         drop(db);let reopened=Database::new(&path).unwrap();assert_eq!(reopened.latest_artifact(&work.work_item_id,"CONTENT_DRAFT").unwrap().unwrap().version,2);assert_eq!(reopened.handoffs(&work.work_item_id).unwrap().len(),1);
+    }
+
+    #[test]
+    fn blocked_requires_and_preserves_valid_resume_state() {
+        let dir=tempfile::tempdir().unwrap();
+        let db=Database::new(dir.path().join("core.sqlite")).unwrap();
+        let work=db.create_work_item("test","signal").unwrap();
+        db.update_work_item(&work.work_item_id,"IN_PRODUCTION","brain + jax",None).unwrap();
+        let stored=db.enter_blocked(&work.work_item_id,"brain + jax","Provider output is not JSON","STRATEGIZED").unwrap();
+        assert_eq!(stored,"STRATEGIZED");
+        let item=db.work_item(&work.work_item_id).unwrap();
+        assert_eq!(item.state,"BLOCKED");
+        assert_eq!(item.resume_state.as_deref(),Some("STRATEGIZED"));
+        assert!(db.enter_blocked(&work.work_item_id,"system","BLOCKED is missing resume_state","BLOCKED").is_ok());
+        let preserved=db.work_item(&work.work_item_id).unwrap();
+        assert_eq!(preserved.resume_state.as_deref(),Some("STRATEGIZED"));
+        db.update_work_item(&work.work_item_id,"IN_PRODUCTION","brain + jax",None).unwrap();
+        assert!(db.update_work_item_with_resume(&work.work_item_id,"BLOCKED","system",Some("x"),None).is_err());
+        assert!(db.update_work_item_with_resume(&work.work_item_id,"BLOCKED","system",Some("x"),Some("NEW")).is_err());
+        assert!(db.update_work_item_with_resume(&work.work_item_id,"BLOCKED","system",Some("x"),Some("BLOCKED")).is_err());
     }
 }

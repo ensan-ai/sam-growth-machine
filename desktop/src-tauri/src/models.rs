@@ -33,7 +33,15 @@ pub struct RuntimeSettings {
     pub openai_model: String,
     pub allow_openai_escalation: bool,
     pub company_control: String,
+    #[serde(default = "default_observe")]
+    pub observe_quality: String,
+    #[serde(default)]
+    pub brain_force_fail: bool,
+    #[serde(default)]
+    pub publish_force_fail: bool,
 }
+
+fn default_observe() -> String { "UNAVAILABLE".into() }
 
 impl Default for RuntimeSettings {
     fn default() -> Self {
@@ -43,6 +51,9 @@ impl Default for RuntimeSettings {
             openai_model: "gpt-5.6".into(),
             allow_openai_escalation: false,
             company_control: "RUNNING".into(),
+            observe_quality: "UNAVAILABLE".into(),
+            brain_force_fail: false,
+            publish_force_fail: false,
         }
     }
 }
@@ -57,6 +68,7 @@ pub struct WorkItemSummary {
     pub created_at: String,
     pub updated_at: String,
     pub blocked_reason: Option<String>,
+    pub resume_state: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,6 +136,35 @@ pub struct AgentRunRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ExecutionRecord {
+    pub execution_id: String,
+    pub work_item_id: Option<String>,
+    pub role: String,
+    pub capability: String,
+    pub kind: String,
+    pub provider: Option<String>,
+    pub model: Option<String>,
+    pub started_at: String,
+    pub finished_at: Option<String>,
+    pub success: bool,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LearningRecord {
+    pub learning_id: String,
+    pub source_work_item_id: String,
+    pub opportunity_fingerprint: String,
+    pub cycle_decision: String,
+    pub data_quality: String,
+    pub recommended_attention: Option<String>,
+    pub payload: Value,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SystemEventRecord {
     pub event_id: String,
     pub work_item_id: Option<String>,
@@ -142,6 +183,8 @@ pub struct WorkItemDetail {
     pub approvals: Vec<ApprovalRecord>,
     pub runs: Vec<AgentRunRecord>,
     pub events: Vec<SystemEventRecord>,
+    #[serde(default)]
+    pub executions: Vec<ExecutionRecord>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

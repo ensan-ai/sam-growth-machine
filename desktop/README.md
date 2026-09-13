@@ -2,6 +2,11 @@
 
 Phase 4A runnable macOS desktop application for the SAM GROWTH MACHINE.
 
+The kernel loop on `slice/kernel-loop` runs seven role-owned capabilities
+inside this desktop runtime. Intended platform is LinkedIn; execution in this
+slice is the `LOCAL_LEDGER` adapter. Only Brain may call a model. Observe
+defaults to `UNAVAILABLE`.
+
 ## Development
 
 Requirements:
@@ -29,13 +34,15 @@ shown. Paid escalation is disabled by default and must be enabled in Settings.
 ```sh
 pnpm test
 pnpm test:rust
+# headless kernel tests (no GTK/WebKit):
+cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --lib
+
 pnpm build
 ```
 
-Rust integration tests use `MOCK_PROVIDER`. The normal desktop runtime does not
-offer Mock as a selectable provider. Phase 4A publication and performance
-collection remain explicit deterministic adapters until real platform APIs are
-approved.
+Rust kernel tests use a content-preserving Brain test double. `MOCK_PROVIDER`
+and schema-fixture recovery are not a success path. Synthetic `COMPLETE`
+observations are tests-only and must set `mocked: true`.
 
 ## Visual fallback
 

@@ -2,6 +2,14 @@
 
 Status: conceptual Phase 3A integration state only. It coordinates existing artifacts; it does not replace employee-specific states or implement storage.
 
+Runtime kernel slice states are defined in `docs/slice-v1-kernel-loop.md`:
+`NEW → RESEARCHED → SELECTED → STRATEGIZED → IN_PRODUCTION → READY_FOR_APPROVAL → APPROVED → READY_TO_PUBLISH → PUBLISHED → MEASURING → MEASURED`,
+plus `REVISION_REQUIRED`, `REJECTED`, `BLOCKED`, `CANCELLED`.
+`BLOCKED` always stores `resume_state` and never semantically resumes to `NEW`.
+
+This document remains the conceptual company lifecycle. Do not treat its names
+(`CANDIDATE`, `AWAITING_APPROVAL`, `PUBLISHING`) as the SQLite runtime enum.
+
 ## States
 
 | State | Meaning |

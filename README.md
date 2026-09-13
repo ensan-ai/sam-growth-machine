@@ -1,16 +1,9 @@
 # SAM Growth Machine
 
-Phase 1 repository foundation for SAM PERSONAL BRAND.
+Local-first agentic OS for SAM SHERIF | PRACTICAL AI.
 
-This repository defines the company and the SAM AI Employee Standard v1. It intentionally contains no application, user interface, agent runtime, external integration, database, scheduler, publishing automation, or production execution code.
-
-## Phase 1 contents
-
-- Seven AI employee definition packages under agents/
-- Machine-readable schemas under schemas/
-- The agreed high-level personal brand growth loop under workflows/
-- Product, organization, governance, handoff, lifecycle, state, and repository documentation under docs/
-- Reserved engine/ and desktop/ directories containing scope notices only
+This repository defines the company, the SAM AI Employee Standard v1, and the
+desktop Neural Core. Kernel-loop runtime work lives on `slice/kernel-loop`.
 
 ## V1 scope
 
@@ -18,10 +11,20 @@ V1 serves SAM PERSONAL BRAND only. Sam is the Founder, CEO, Human Authority, and
 
 The seven AI employees are Travis, Saly, Adam, Brain, Jax, Maro, and Lara. No other employee is defined in V1.
 
+## Kernel slice
+
+`docs/slice-v1-kernel-loop.md` is the frozen implementation spec for the first
+closed loop:
+
+`RESEARCH_SIGNAL → OPPORTUNITY → DECISION+ASSIGNMENT → BRIEF → DRAFT + NO_VISUAL_REQUIRED → PACKAGE → Sam APPROVAL → Execute (LOCAL_LEDGER) → Observe → Learn`
+
+Intended public surface remains LinkedIn. The slice execution adapter is `LOCAL_LEDGER`. Only Brain may invoke a model. Maro is policy + adapter, never an LLM.
+
 ## Source of truth
 
 - docs/product-vision.md records the approved product and business scope.
 - docs/ai-employee-standard-v1.md defines the employee specification standard.
+- docs/slice-v1-kernel-loop.md is the frozen kernel-loop implementation spec.
 - agents/*/manifest.yaml is the primary static, machine-readable employee shell.
 - agents/*/contract.md is its human-readable companion.
 - workflows/personal-brand-growth-loop.yaml records only the approved high-level sequence.
@@ -29,4 +32,6 @@ The seven AI employees are Travis, Saly, Adam, Brain, Jax, Maro, and Lara. No ot
 
 ## Current status
 
-Phase 1 is complete as a specification foundation. Travis, Saly, Adam, Brain, Jax, Maro, and Lara now have complete, reviewable Phase 2A, Phase 2B, Phase 2C, Phase 2D, Phase 2E, Phase 2F, and Phase 2G employee definitions respectively; none is activated or approved for runtime execution.
+Employee definition packages are reviewable. The kernel loop is implemented in
+`desktop/src-tauri` on branch `slice/kernel-loop`. Neural Core UI, OAuth, and
+real social platform APIs are out of this slice.

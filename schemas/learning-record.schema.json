@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam-growth-machine.local/schemas/learning-record.schema.json",
+  "title": "LEARNING_RECORD",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "artifact_id",
+    "created_by",
+    "owner_role",
+    "source_work_item_id",
+    "source_input_references",
+    "opportunity_fingerprint",
+    "cycle_decision",
+    "data_quality",
+    "constraints_for_next"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "artifact_type": { "const": "LEARNING_RECORD" },
+    "artifact_id": { "type": "string", "minLength": 1 },
+    "created_by": { "const": "system" },
+    "owner_role": { "const": "travis" },
+    "source_work_item_id": { "type": "string", "minLength": 1 },
+    "source_input_references": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "opportunity_fingerprint": { "type": "string", "minLength": 1 },
+    "signal_excerpt": { "type": "string" },
+    "cycle_decision": {
+      "enum": ["DOUBLE_DOWN", "CONTINUE", "MODIFY", "PAUSE", "STOP", "TEST"]
+    },
+    "data_quality": {
+      "enum": ["COMPLETE", "PARTIAL", "STALE", "INCONSISTENT", "UNAVAILABLE"]
+    },
+    "recommended_attention": {
+      "enum": ["STRONG_SIGNAL", "WEAK_SIGNAL", "MIXED_SIGNAL", "NEGATIVE_SIGNAL", "NEED_MORE_DATA"]
+    },
+    "constraints_for_next": {
+      "type": "object",
+      "required": ["avoid_angles", "prefer_angles", "require_more_evidence", "do_not_treat_as_causal"],
+      "properties": {
+        "avoid_angles": { "type": "array", "items": { "type": "string" } },
+        "prefer_angles": { "type": "array", "items": { "type": "string" } },
+        "require_more_evidence": { "type": "boolean" },
+        "do_not_treat_as_causal": { "type": "boolean" }
+      }
+    },
+    "next_action": { "type": "string" }
+  }
+}
