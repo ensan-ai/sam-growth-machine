@@ -38,3 +38,13 @@ jobs:
         with:
           workspaces: desktop/src-tauri
       - run: cargo test --manifest-path desktop/src-tauri/Cargo.toml --no-default-features --lib
+
+  desktop-rust:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+      - run: cargo check --manifest-path desktop/src-tauri/Cargo.toml
