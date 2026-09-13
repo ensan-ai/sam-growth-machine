@@ -8,8 +8,8 @@ varying vec3 vObj;
 
 void main() {
   vObj = position;
-  float wave = sin(position.x * 4.4 + time * 0.38) + sin(position.y * 5.1 - time * 0.27) + sin(position.z * 4.8 + time * 0.33);
-  vec3 displaced = position + normal * wave * (0.028 + energy * 0.035) * radius;
+  float wave = sin(position.x * 5.6 + time * 0.55) + sin(position.y * 6.4 - time * 0.41) + sin(position.z * 5.9 + time * 0.37);
+  vec3 displaced = position + normal * wave * (0.022 + energy * 0.03) * radius;
   vec4 mv = modelViewMatrix * vec4(displaced, 1.0);
   vNormal = normalize(normalMatrix * normal);
   vView = -mv.xyz;
@@ -31,18 +31,18 @@ void main() {
   vec3 N = normalize(vNormal);
   vec3 V = normalize(vView);
   float ndv = max(dot(N, V), 0.0);
-  float fresnel = pow(1.0 - ndv, 3.2);
-  float inner = pow(ndv, 2.2);
-  vec3 glass = vec3(0.05, 0.07, 0.11);
-  vec3 pearl = mix(vec3(0.18, 0.24, 0.34), vec3(0.28, 0.22, 0.40), 0.45 + 0.12 * sin(vObj.y * 6.0 + time * 0.4));
-  vec3 rgb = mix(glass, pearl, inner * (0.38 + authority * 0.18));
-  vec3 ice = mix(vec3(0.32, 0.58, 0.78), vec3(0.86, 0.94, 1.0), energy);
-  rgb += ice * pow(inner, 2.6) * (0.18 + energy * 0.72 + authority * 0.2);
-  rgb += vec3(0.38, 0.28, 0.62) * pow(inner, 3.4) * 0.16;
-  rgb += vec3(0.96, 0.48, 0.26) * blocked * pow(inner, 2.1) * (0.28 + 0.22 * sin(time * 3.6));
-  rgb += vec3(0.90, 0.74, 0.38) * waiting * pow(inner, 1.9) * 0.32;
-  rgb += vec3(0.62, 0.80, 0.94) * fresnel * (0.28 + energy * 0.12 + authority * 0.18);
-  float alpha = 0.30 + inner * 0.22 + fresnel * 0.48 + energy * 0.06 + authority * 0.1;
+  float fresnel = pow(1.0 - ndv, 3.6);
+  float inner = pow(ndv, 2.6);
+  vec3 glass = vec3(0.04, 0.055, 0.08);
+  vec3 pearl = mix(vec3(0.16, 0.22, 0.32), vec3(0.24, 0.18, 0.36), 0.4 + 0.15 * sin(vObj.y * 8.0 + time * 0.55));
+  vec3 rgb = mix(glass, pearl, inner * (0.28 + authority * 0.22));
+  vec3 ice = mix(vec3(0.28, 0.52, 0.72), vec3(0.82, 0.93, 1.0), energy);
+  rgb += ice * pow(inner, 3.0) * (0.14 + energy * 0.7 + authority * 0.18);
+  rgb += vec3(0.34, 0.24, 0.58) * pow(inner, 4.0) * 0.12;
+  rgb += vec3(0.94, 0.46, 0.24) * blocked * pow(inner, 2.4) * (0.22 + 0.2 * sin(time * 3.8));
+  rgb += vec3(0.88, 0.72, 0.36) * waiting * pow(inner, 2.2) * 0.26;
+  rgb += vec3(0.7, 0.86, 0.98) * fresnel * (0.22 + energy * 0.1 + authority * 0.16);
+  float alpha = 0.18 + inner * 0.16 + fresnel * 0.42 + energy * 0.05 + authority * 0.1;
   gl_FragColor = vec4(rgb, alpha);
 }
 `;
@@ -53,8 +53,8 @@ varying vec2 vUv;
 void main() {
   vec2 p = vUv * 2.0 - 1.0;
   float d = length(p);
-  float a = pow(max(0.0, 1.0 - d), 3.4) * (0.16 + energy * 0.18);
-  gl_FragColor = vec4(0.55, 0.72, 0.92, a);
+  float a = pow(max(0.0, 1.0 - d), 3.8) * (0.1 + energy * 0.14);
+  gl_FragColor = vec4(0.52, 0.7, 0.92, a);
 }
 `;
 

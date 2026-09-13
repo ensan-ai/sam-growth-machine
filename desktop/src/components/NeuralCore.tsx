@@ -63,9 +63,6 @@ export const NeuralCore = memo(function NeuralCore({
     sceneRef.current?.setGraph(graph);
   }, [graph]);
 
-  const focus = graph.nodes.find((node) => node.id === selected) || graph.nodes[0];
-  const hoverNode = graph.nodes.find((node) => node.id === hovered);
-
   return (
     <div className="neural-stage">
       <div className="neural-canvas" ref={host} aria-label="Living 3D neural core of the company. Orbit, zoom, and select employees.">
@@ -83,15 +80,10 @@ export const NeuralCore = memo(function NeuralCore({
               }}
             >
               <span className="node-name">{node.name}</span>
-              {(hovered === node.id || selected === node.id) && <small>{node.shortSpecialty}</small>}
+              {hovered === node.id && <small>{node.shortSpecialty}</small>}
             </button>
           ))}
         </div>
-      </div>
-      <div className="graph-focus glass-hud compact">
-        <span className={`tiny-light ${focus?.status.toLowerCase()}`} />
-        <strong>{focus?.name}</strong>
-        <span>{hoverNode && hoverNode.id !== focus?.id ? hoverNode.shortSpecialty : focus?.shortSpecialty}</span>
       </div>
       <div className="graph-controls">
         <button aria-label="Zoom out" onClick={() => { const c = sceneRef.current; if (c) c.camera.position.multiplyScalar(1.12); }}><Minus size={14} /></button>
@@ -105,7 +97,7 @@ export const NeuralCore = memo(function NeuralCore({
 
 function applyLabel(el: HTMLButtonElement | undefined, label: LabelState) {
   if (!el) return;
-  el.style.transform = `translate(-50%, 0) translate(${label.x}px, ${label.y}px)`;
+  el.style.transform = `translate(-50%, -50%) translate(${label.x}px, ${label.y}px)`;
   el.style.visibility = label.visible ? "visible" : "hidden";
   el.style.zIndex = String(Math.round((1 - label.depth) * 100));
 }

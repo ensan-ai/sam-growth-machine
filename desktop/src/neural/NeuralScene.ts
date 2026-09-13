@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { defaultCamera, layoutWorkforce, nodeRadius } from "../graph/layout";
+import { defaultCamera, labelAnchor, layoutWorkforce, nodeRadius, type LabelAnchor } from "../graph/layout";
 import type { CompanyGraph, GraphEdge, Vec3 } from "../graph/types";
 import { glowFragment, glowVertex, membraneFragment, organicVertex } from "./shaders";
 
@@ -16,6 +16,7 @@ export type LabelState = {
   hovered: boolean;
   selected: boolean;
   authority: boolean;
+  anchor: LabelAnchor;
 };
 
 type NodeMesh = {
@@ -33,7 +34,7 @@ type Pathway = {
   id: string;
   source: string;
   target: string;
-  curve: THREE.CubicBezierCurve3;
+  curve: THREE.CatmullRomCurve3;
   mesh: THREE.Mesh;
   synapses: THREE.Mesh[];
   twigs: THREE.Line[];
@@ -42,8 +43,9 @@ type Pathway = {
 };
 
 const tmp = new THREE.Vector3();
+const tmpN = new THREE.Vector3();
 const MAX_PULSES = 10;
-const MAX_DUST = 90;
+const MAX_DUST = 70;
 
 function hash(value: string): number {
   let h = 0;
@@ -51,16 +53,21 @@ function hash(value: string): number {
   return Math.abs(h);
 }
 
-function axonCurve(a: THREE.Vector3, b: THREE.Vector3, seed: number): THREE.CubicBezierCurve3 {
-  const dir = b.clone().sub(a);
-  const up = new THREE.Vector3(0, 1, 0);
+function neuralCurve(from: THREE.Vector3, to: THREE.Vector3, rFrom: number, rTo: number, seed: number): THREE.CatmullRomCurve3 {
+  const dir = to.clone().sub(from);
+  const dist = Math.max(0.04, dir.length());
+  dir.multiplyScalar(1 / dist);
+  const a = from.clone().addScaledVector(dir, rFrom * 1.12);
+  const b = to.clone().addScaledVector(dir, -rTo * 1.12);
+  const up = new THREE.Vector3(0, 0, 1);
   let side = new THREE.Vector3().crossVectors(dir, up);
-  if (side.lengthSq() < 1e-5) side.crossVectors(dir, new THREE.Vector3(1, 0, 0));
+  if (side.lengthSq() < 1e-6) side.crossVectors(dir, new THREE.Vector3(0, 1, 0));
   side.normalize();
-  const lift = 0.05 + (seed % 40) / 900;
-  const c1 = a.clone().lerp(b, 0.34).addScaledVector(side, lift).addScaledVector(up, 0.04);
-  const c2 = a.clone().lerp(b, 0.66).addScaledVector(side, -lift * 0.5).addScaledVector(up, 0.05);
-  return new THREE.CubicBezierCurve3(a, c1, c2, b);
+  const bulge = Math.min(0.13, dist * 0.16) * (seed % 2 ? 1 : -1);
+  const synapse = a.clone().lerp(b, 0.5).addScaledVector(side, bulge).add(new THREE.Vector3(0, dist * 0.035, 0));
+  const dendrite = a.clone().lerp(synapse, 0.42).addScaledVector(side, bulge * 0.2);
+  const axon = synapse.clone().lerp(b, 0.45).addScaledVector(side, -bulge * 0.12);
+  return new THREE.CatmullRomCurve3([a, dendrite, synapse, axon, b]);
 }
 
 export class NeuralScene {
@@ -85,13 +92,11 @@ export class NeuralScene {
   private pulseMat: THREE.MeshBasicMaterial;
   private synapseMat: THREE.MeshBasicMaterial;
   private lineMat: THREE.LineBasicMaterial;
-  private activeLineMat: THREE.LineBasicMaterial;
-  private handoffLineMat: THREE.LineBasicMaterial;
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private frame = 0;
   private last = 0;
-  private idleRotateUntil = 0;
+  private idleRotateUntil = Number.POSITIVE_INFINITY;
   private reduced: MediaQueryList;
   private element: HTMLElement;
   private dust?: THREE.Points;
@@ -105,36 +110,34 @@ export class NeuralScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     element.appendChild(this.renderer.domElement);
-    this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 40);
-    this.camera.position.set(0, 0.42, 3.15);
-    this.scene.fog = new THREE.FogExp2(0x05121d, 0.018);
+    this.camera = new THREE.PerspectiveCamera(40, 1, 0.08, 40);
+    this.camera.position.set(0, 0.22, 2.9);
+    this.scene.fog = new THREE.FogExp2(0x05121d, 0.012);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.07;
-    this.controls.minDistance = 2.2;
-    this.controls.maxDistance = 5.4;
-    this.controls.target.set(0, 0.05, 0.08);
-    this.controls.minPolarAngle = Math.PI * 0.32;
-    this.controls.maxPolarAngle = Math.PI * 0.66;
-    this.controls.autoRotate = true;
-    this.controls.autoRotateSpeed = 0.16;
+    this.controls.dampingFactor = 0.08;
+    this.controls.minDistance = 1.9;
+    this.controls.maxDistance = 6.2;
+    this.controls.target.set(0, 0.08, 0);
+    this.controls.minPolarAngle = Math.PI * 0.34;
+    this.controls.maxPolarAngle = Math.PI * 0.64;
+    this.controls.autoRotate = false;
+    this.controls.autoRotateSpeed = 0.12;
     this.controls.addEventListener("start", () => {
       this.controls.autoRotate = false;
-      this.idleRotateUntil = performance.now() + 9000;
+      this.idleRotateUntil = performance.now() + 14000;
     });
-    this.orbGeo = new THREE.IcosahedronGeometry(1, 3);
+    this.orbGeo = new THREE.IcosahedronGeometry(1, 2);
     this.glowGeo = new THREE.PlaneGeometry(1, 1);
-    this.synapseGeo = new THREE.SphereGeometry(1, 10, 8);
-    this.pulseGeo = new THREE.SphereGeometry(1, 12, 10);
-    this.pulseMat = new THREE.MeshBasicMaterial({ color: 0xc5e8ff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
-    this.synapseMat = new THREE.MeshBasicMaterial({ color: 0x8eb4d4, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
-    this.lineMat = new THREE.LineBasicMaterial({ color: 0x6d8ea8, transparent: true, opacity: 0.28 });
-    this.activeLineMat = new THREE.LineBasicMaterial({ color: 0x9ec8e6, transparent: true, opacity: 0.55 });
-    this.handoffLineMat = new THREE.LineBasicMaterial({ color: 0xd4e8ff, transparent: true, opacity: 0.7 });
+    this.synapseGeo = new THREE.SphereGeometry(1, 8, 6);
+    this.pulseGeo = new THREE.SphereGeometry(1, 10, 8);
+    this.pulseMat = new THREE.MeshBasicMaterial({ color: 0xc9e6ff, transparent: true, opacity: 0.82, blending: THREE.AdditiveBlending, depthWrite: false });
+    this.synapseMat = new THREE.MeshBasicMaterial({ color: 0x8aaec8, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+    this.lineMat = new THREE.LineBasicMaterial({ color: 0x6a879e, transparent: true, opacity: 0.22 });
     this.pulses = Array.from({ length: MAX_PULSES }, () => {
       const mesh = new THREE.Mesh(this.pulseGeo, this.pulseMat);
       mesh.visible = false;
-      mesh.scale.setScalar(0.055);
+      mesh.scale.setScalar(0.03);
       this.scene.add(mesh);
       return mesh;
     });
@@ -150,26 +153,21 @@ export class NeuralScene {
     this.graph = graph;
     const ids = graph.nodes.map((node) => node.id).join("|");
     const signature = `${ids}|${graph.edges.filter((e) => e.relationship === "reports_to").map((e) => e.id).join(",")}`;
-    if (signature !== this.nodeIds()) {
-      this.rebuild(graph);
-    }
+    if (signature !== this.nodeIds()) this.rebuild(graph);
     this.nodeCount = graph.nodes.length;
   }
 
   focus(id: string) {
     this.selectedId = id;
-    const mesh = this.nodes.get(id);
-    if (!mesh) return;
     this.controls.autoRotate = false;
-    this.idleRotateUntil = performance.now() + 12000;
-    const dest = mesh.rest.clone().add(new THREE.Vector3(0.15, 0.35, 1.55));
-    this.animateCamera(dest, mesh.rest.clone());
+    this.idleRotateUntil = performance.now() + 16000;
   }
 
   resetView() {
     this.selectedId = "sam";
     this.frameCluster(true);
-    this.idleRotateUntil = performance.now() + 400;
+    this.idleRotateUntil = Number.POSITIVE_INFINITY;
+    this.controls.autoRotate = false;
   }
 
   dispose() {
@@ -186,8 +184,6 @@ export class NeuralScene {
     this.pulseMat.dispose();
     this.synapseMat.dispose();
     this.lineMat.dispose();
-    this.activeLineMat.dispose();
-    this.handoffLineMat.dispose();
     this.dust?.geometry.dispose();
     (this.dust?.material as THREE.Material | undefined)?.dispose();
     this.renderer.dispose();
@@ -220,7 +216,7 @@ export class NeuralScene {
           authority: { value: node.role === "human_authority" ? 1 : 0 },
         },
         transparent: true,
-        depthWrite: true,
+        depthWrite: false,
       });
       const orb = new THREE.Mesh(this.orbGeo, material);
       orb.scale.setScalar(radius);
@@ -234,13 +230,17 @@ export class NeuralScene {
         blending: THREE.AdditiveBlending,
       });
       const glow = new THREE.Mesh(this.glowGeo, glowMaterial);
-      glow.scale.setScalar(radius * (node.role === "human_authority" ? 2.35 : 2.05));
+      glow.scale.setScalar(radius * (node.role === "human_authority" ? 1.55 : 1.45));
       group.add(glow, orb);
       const inner = new THREE.Mesh(
         this.synapseGeo,
-        new THREE.MeshBasicMaterial({ color: node.role === "human_authority" ? 0xcfe8ff : 0x8fb4d8, transparent: true, opacity: 0.42 }),
+        new THREE.MeshBasicMaterial({
+          color: node.role === "human_authority" ? 0xd4e8ff : 0x8fb4d4,
+          transparent: true,
+          opacity: 0.55,
+        }),
       );
-      inner.scale.setScalar(radius * (node.role === "human_authority" ? 0.22 : 0.28));
+      inner.scale.setScalar(radius * 0.26);
       group.add(inner);
       this.scene.add(group);
       this.nodes.set(node.id, {
@@ -272,54 +272,57 @@ export class NeuralScene {
 
   private buildPathways(graph: CompanyGraph) {
     const orgEdges = graph.edges.filter((edge) => edge.relationship === "reports_to");
-    const allowTwigs = graph.nodes.length <= 36;
+    const allowTwigs = graph.nodes.length <= 28;
     orgEdges.forEach((edge) => {
-      const a = this.nodes.get(edge.source);
-      const b = this.nodes.get(edge.target);
+      const a = this.nodes.get(edge.target);
+      const b = this.nodes.get(edge.source);
       if (!a || !b) return;
-      const curve = axonCurve(a.rest, b.rest, hash(edge.id));
-      const tube = new THREE.TubeGeometry(curve, 32, edge.source === "sam" ? 0.016 : 0.009, 5, false);
-      const tubeMat = new THREE.MeshBasicMaterial({ color: 0x5d7c96, transparent: true, opacity: 0.38 });
+      const curve = neuralCurve(a.rest, b.rest, a.radius, b.radius, hash(edge.id));
+      const tube = new THREE.TubeGeometry(curve, 36, edge.source === "sam" ? 0.006 : 0.0042, 4, false);
+      const tubeMat = new THREE.MeshBasicMaterial({ color: 0x5a7388, transparent: true, opacity: 0.42 });
       const mesh = new THREE.Mesh(tube, tubeMat);
       this.scene.add(mesh);
-      const synapses = [0.32, 0.57, 0.82].map((t) => {
-        const mesh = new THREE.Mesh(this.synapseGeo, this.synapseMat);
-        mesh.position.copy(curve.getPoint(t));
-        mesh.scale.setScalar(0.028);
-        this.scene.add(mesh);
-        return mesh;
-      });
+      const synapse = new THREE.Mesh(this.synapseGeo, this.synapseMat);
+      synapse.position.copy(curve.getPoint(0.5));
+      synapse.scale.setScalar(0.016);
+      this.scene.add(synapse);
       const twigs: THREE.Line[] = [];
       if (allowTwigs) {
-        [0.22, 0.74].forEach((t, i) => {
-          const origin = curve.getPoint(t);
-          const tangent = curve.getTangent(t);
-          const side = tmp.crossVectors(tangent, new THREE.Vector3(0, 1, 0)).normalize();
-          if (side.lengthSq() < 1e-4) side.set(1, 0, 0);
-          const end = origin.clone().addScaledVector(side, (i % 2 ? -1 : 1) * 0.11).add(new THREE.Vector3(0, 0.05, 0));
-          const twigGeo = new THREE.BufferGeometry().setFromPoints([origin, origin.clone().lerp(end, 0.45), end]);
-          const twig = new THREE.Line(twigGeo, this.lineMat);
-          this.scene.add(twig);
-          twigs.push(twig);
-        });
+        const origin = curve.getPoint(0.5);
+        const tangent = curve.getTangent(0.5);
+        const side = tmpN.crossVectors(tangent, new THREE.Vector3(0, 0, 1)).normalize();
+        if (side.lengthSq() < 1e-4) side.set(1, 0, 0);
+        const end = origin.clone().addScaledVector(side, 0.07).add(new THREE.Vector3(0, 0.03, 0));
+        const twig = new THREE.Line(new THREE.BufferGeometry().setFromPoints([origin, end]), this.lineMat);
+        this.scene.add(twig);
+        twigs.push(twig);
       }
-      this.pathways.push({ id: edge.id, source: edge.source, target: edge.target, curve, mesh, synapses, twigs, relationship: "reports_to", restColor: 0x5d7c96 });
+      this.pathways.push({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        curve,
+        mesh,
+        synapses: [synapse],
+        twigs,
+        relationship: "reports_to",
+        restColor: 0x5a7388,
+      });
     });
   }
 
   private addDust() {
     const positions = new Float32Array(MAX_DUST * 3);
     for (let i = 0; i < MAX_DUST; i++) {
-      const r = 0.9 + Math.random() * 1.6;
+      const r = 0.5 + Math.random() * 1.4;
       const t = Math.random() * Math.PI * 2;
-      const y = (Math.random() - 0.45) * 3.2;
       positions[i * 3] = Math.cos(t) * r;
-      positions[i * 3 + 1] = y;
-      positions[i * 3 + 2] = Math.sin(t) * r * 0.9;
+      positions[i * 3 + 1] = (Math.random() - 0.45) * 1.5;
+      positions[i * 3 + 2] = Math.sin(t) * r * 0.55;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.PointsMaterial({ color: 0x6d8eaa, size: 0.012, transparent: true, opacity: 0.16, depthWrite: false });
+    const mat = new THREE.PointsMaterial({ color: 0x6a8298, size: 0.01, transparent: true, opacity: 0.14, depthWrite: false });
     this.dust = new THREE.Points(geo, mat);
     this.scene.add(this.dust);
   }
@@ -395,44 +398,37 @@ export class NeuralScene {
     if (document.hidden) return;
     const dt = Math.min(0.1, this.last ? (ms - this.last) / 1000 : 0.016);
     this.last = ms;
-    if (this.reduced.matches) {
-      this.controls.autoRotate = false;
-    } else if (!this.controls.autoRotate && ms > this.idleRotateUntil) {
-      this.controls.autoRotate = true;
-    }
+    if (this.reduced.matches) this.controls.autoRotate = false;
+    else if (!this.controls.autoRotate && ms > this.idleRotateUntil) this.controls.autoRotate = true;
     this.controls.update();
     const time = this.reduced.matches ? 0 : ms / 1000;
     const byId = new Map(this.graph.nodes.map((node) => [node.id, node]));
     this.nodes.forEach((mesh, id) => {
       const node = byId.get(id);
       const status = node?.status || "IDLE";
-      const energy = status === "WORKING" ? 1 : status === "WAITING_FOR_SAM" ? 0.42 : status === "BLOCKED" ? 0.08 : 0.1;
+      const energy = status === "WORKING" ? 1 : status === "WAITING_FOR_SAM" ? 0.4 : status === "BLOCKED" ? 0.08 : 0.08;
       mesh.material.uniforms.time.value = time + mesh.seed;
       mesh.material.uniforms.energy.value = energy;
       mesh.material.uniforms.blocked.value = status === "BLOCKED" ? 1 : 0;
       mesh.material.uniforms.waiting.value = status === "WAITING_FOR_SAM" ? 1 : 0;
       mesh.glowMaterial.uniforms.energy.value = energy;
-      const breath = this.reduced.matches ? 0 : Math.sin(time * (status === "WORKING" ? 2.1 : 1.05) + mesh.seed) * (status === "WORKING" ? 0.012 : 0.008);
-      const still = status === "BLOCKED" ? 0.35 : 1;
-      mesh.group.position.y = mesh.rest.y + breath * still;
+      const breath = this.reduced.matches ? 0 : Math.sin(time * (status === "WORKING" ? 2.0 : 1.0) + mesh.seed) * 0.006;
+      mesh.group.position.y = mesh.rest.y + breath * (status === "BLOCKED" ? 0.3 : 1);
       mesh.glow.quaternion.copy(this.camera.quaternion);
-      const pulseScale = 1 + energy * 0.12 + (this.selectedId === id ? 0.08 : 0);
-      mesh.orb.scale.setScalar(mesh.radius * pulseScale);
+      mesh.orb.scale.setScalar(mesh.radius * (1 + energy * 0.06 + (this.selectedId === id ? 0.05 : 0)));
     });
     this.pathways.forEach((path) => {
       const src = byId.get(path.source);
       const dst = byId.get(path.target);
       const live = src?.status === "WORKING" || dst?.status === "WORKING" || src?.status === "WAITING_FOR_SAM" || dst?.status === "WAITING_FOR_SAM";
       const mat = path.mesh.material as THREE.MeshBasicMaterial;
-      mat.color.setHex(live ? 0x8fb8d6 : path.restColor);
-      mat.opacity = live ? 0.52 : 0.38;
-      path.synapses.forEach((s) => {
-        s.scale.setScalar(live ? 0.04 : 0.024);
-      });
+      mat.color.setHex(live ? 0x88aec6 : path.restColor);
+      mat.opacity = live ? 0.58 : 0.42;
+      path.synapses.forEach((s) => s.scale.setScalar(live ? 0.022 : 0.016));
     });
     this.updatePulses(ms);
     this.updateLabels();
-    if (this.dust && !this.reduced.matches) this.dust.rotation.y += dt * 0.02;
+    if (this.dust && !this.reduced.matches) this.dust.rotation.y += dt * 0.015;
     this.renderer.render(this.scene, this.camera);
   };
 
@@ -450,15 +446,11 @@ export class NeuralScene {
       if (t < 0 || t > 1) return;
       mesh.visible = true;
       path.curve.getPoint(t, mesh.position);
-      mesh.scale.setScalar(0.05 + Math.sin(t * Math.PI) * 0.04);
+      mesh.scale.setScalar(0.028 + Math.sin(t * Math.PI) * 0.02);
       const mat = path.mesh.material as THREE.MeshBasicMaterial;
-      mat.color.setHex(0xcfe6ff);
-      mat.opacity = 0.62;
-      path.synapses.forEach((synapse, index) => {
-        const at = 0.32 + index * 0.25;
-        const near = Math.abs(t - at) < 0.12;
-        synapse.scale.setScalar(near ? 0.07 : 0.03);
-      });
+      mat.color.setHex(0xc5def2);
+      mat.opacity = 0.7;
+      path.synapses.forEach((synapse) => synapse.scale.setScalar(Math.abs(t - 0.5) < 0.12 ? 0.03 : 0.016));
     });
     void ms;
   }
@@ -469,19 +461,16 @@ export class NeuralScene {
     const a = this.nodes.get(source);
     const b = this.nodes.get(target);
     if (!a || !b) return;
-    const curve = axonCurve(a.rest, b.rest, hash(source + target));
-    const tube = new THREE.TubeGeometry(curve, 28, 0.01, 5, false);
-    const tubeMat = new THREE.MeshBasicMaterial({ color: 0x9ec4de, transparent: true, opacity: 0.5 });
+    const curve = neuralCurve(a.rest, b.rest, a.radius, b.radius, hash(source + target));
+    const tube = new THREE.TubeGeometry(curve, 28, 0.0048, 4, false);
+    const tubeMat = new THREE.MeshBasicMaterial({ color: 0x8fb4cc, transparent: true, opacity: 0.5 });
     const mesh = new THREE.Mesh(tube, tubeMat);
     this.scene.add(mesh);
-    const synapses = [0.35, 0.65].map((t) => {
-      const mesh = new THREE.Mesh(this.synapseGeo, this.synapseMat);
-      mesh.position.copy(curve.getPoint(t));
-      mesh.scale.setScalar(0.03);
-      this.scene.add(mesh);
-      return mesh;
-    });
-    const path: Pathway = { id: `live:${source}:${target}`, source, target, curve, mesh, synapses, twigs: [], relationship: "handoff", restColor: 0x9ec4de };
+    const synapse = new THREE.Mesh(this.synapseGeo, this.synapseMat);
+    synapse.position.copy(curve.getPoint(0.5));
+    synapse.scale.setScalar(0.016);
+    this.scene.add(synapse);
+    const path: Pathway = { id: `live:${source}:${target}`, source, target, curve, mesh, synapses: [synapse], twigs: [], relationship: "handoff", restColor: 0x8fb4cc };
     this.pathways.push(path);
     return path;
   }
@@ -489,8 +478,10 @@ export class NeuralScene {
   private updateLabels() {
     const w = this.element.clientWidth;
     const h = this.element.clientHeight;
-    this.labels = this.graph.nodes.map((node) => {
+    const boxes = this.graph.nodes.map((node) => {
       const mesh = this.nodes.get(node.id);
+      const pos = this.positions.get(node.id) || [0, 0, 0];
+      const anchor = labelAnchor(node.id, pos);
       const label: LabelState = {
         id: node.id,
         name: node.name,
@@ -503,16 +494,65 @@ export class NeuralScene {
         hovered: this.hoveredId === node.id,
         selected: this.selectedId === node.id,
         authority: node.role === "human_authority",
+        anchor,
       };
-      if (!mesh) return label;
+      if (!mesh) return { label, width: 0, height: 0, nx: 0, ny: 0, nr: 0 };
       tmp.copy(mesh.group.position);
-      tmp.y -= mesh.radius + (label.authority ? 0.22 : 0.16);
       tmp.project(this.camera);
-      label.x = (tmp.x * 0.5 + 0.5) * w;
-      label.y = (-tmp.y * 0.5 + 0.5) * h;
+      const nx = (tmp.x * 0.5 + 0.5) * w;
+      const ny = (-tmp.y * 0.5 + 0.5) * h;
+      const nr = Math.max(10, mesh.radius * (h / (2 * Math.tan((this.camera.fov * Math.PI) / 360) * mesh.group.position.distanceTo(this.camera.position))));
+      const width = node.name.length * 7.4 + (label.authority ? 18 : 10);
+      const height = label.authority ? 22 : 16;
+      let x = nx;
+      let y = ny;
+      if (anchor === "left") { x = nx - nr - width * 0.5 - 10; y = ny - 4; }
+      else if (anchor === "right") { x = nx + nr + width * 0.5 + 10; y = ny - 4; }
+      else if (anchor === "above") { x = nx; y = ny - nr - height - 6; }
+      else { x = nx; y = ny + nr + 8; }
+      label.x = x;
+      label.y = y;
       label.depth = tmp.z;
-      label.visible = tmp.z < 1 && tmp.z > -1 && label.x > -80 && label.x < w + 80 && label.y > -40 && label.y < h + 40;
-      return label;
+      label.visible = tmp.z < 1 && tmp.z > -1 && x > 8 && x < w - 8 && y > 8 && y < h - 8;
+      return { label, width, height, nx, ny, nr };
     });
+
+    for (let iter = 0; iter < 18; iter++) {
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i];
+          const b = boxes[j];
+          const dx = b.label.x - a.label.x;
+          const dy = b.label.y - a.label.y;
+          const ox = (a.width + b.width) * 0.5 + 8 - Math.abs(dx);
+          const oy = (a.height + b.height) * 0.5 + 4 - Math.abs(dy);
+          if (ox <= 0 || oy <= 0) continue;
+          const pushX = (dx === 0 ? 1 : Math.sign(dx)) * ox * 0.5;
+          const pushY = (dy === 0 ? 1 : Math.sign(dy)) * oy * 0.5;
+          if (ox < oy) {
+            a.label.x -= pushX * 0.5;
+            b.label.x += pushX * 0.5;
+          } else {
+            a.label.y -= pushY * 0.5;
+            b.label.y += pushY * 0.5;
+          }
+        }
+        const a = boxes[i];
+        boxes.forEach((n) => {
+          const dx = a.label.x - n.nx;
+          const dy = a.label.y - n.ny;
+          const need = n.nr + Math.max(a.width, a.height) * 0.35 + 6;
+          const dist = Math.hypot(dx, dy) || 0.001;
+          if (dist >= need) return;
+          const s = (need - dist) / dist;
+          a.label.x += dx * s;
+          a.label.y += dy * s;
+        });
+        a.label.x = Math.max(a.width * 0.5 + 8, Math.min(w - a.width * 0.5 - 8, a.label.x));
+        a.label.y = Math.max(14, Math.min(h - 28, a.label.y));
+      }
+    }
+
+    this.labels = boxes.map((b) => b.label);
   }
 }
