@@ -394,8 +394,9 @@ CREATE INDEX IF NOT EXISTS idx_command_task_events_task ON command_task_events(t
 
     fn dependencies_with_conn(&self, conn: &Connection, task_id: &str) -> Result<Vec<String>, String> {
         let mut stmt = conn.prepare("SELECT depends_on_task_id FROM command_task_dependencies WHERE task_id=?1 ORDER BY depends_on_task_id").map_err(|e| e.to_string())?;
-        stmt.query_map([task_id], |r| r.get(0)).map_err(|e| e.to_string())?
-            .map(|r| r.map_err(|e| e.to_string())).collect()
+        let result = stmt.query_map([task_id], |r| r.get(0)).map_err(|e| e.to_string())?
+            .map(|r| r.map_err(|e| e.to_string())).collect();
+        result
     }
 
     fn unresolved_dependencies(&self, deps: &[String]) -> Result<Vec<String>, String> {
