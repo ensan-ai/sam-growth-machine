@@ -43,3 +43,17 @@ export type CreateCommandTask = {
   dependencyIds?:string[];
 };
 export type CommandTaskEvent = { eventId:string; taskId:string; eventType:string; actor:string; detail:unknown; createdAt:string };
+export type CommandTaskPreparation = {
+  taskId:string;
+  state:"PREPARING"|"NEEDS_OPERATOR_INPUT"|"PREPARED"|"FAILED"|string;
+  explorerOutput?:unknown;
+  researcherOutput?:unknown;
+  orchestratorOutput?:unknown;
+  operatorQuestion?:string;
+  operatorRecommendation?:string;
+  operatorDecision?:string;
+  error?:string;
+  createdAt:string;
+  updatedAt:string;
+};
+export type PrepareCommandTaskResult = { task:CommandTask; preparation:CommandTaskPreparation };
