@@ -5,6 +5,9 @@ dist/
 # Rust / Tauri
 target/
 
+# SAM Command Center runtime projection
+.sam-runtime/
+
 # Secrets
 .env
 .env.*
