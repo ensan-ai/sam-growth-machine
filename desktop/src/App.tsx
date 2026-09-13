@@ -66,8 +66,11 @@ function ActivityView({activity}:{activity:Activity}){
       const e=row.execution;
       return <div className="run-row" key={e.executionId}><div><strong>{e.role} · {e.capability}</strong><span>{e.kind}{e.provider?` / ${e.provider}`:""}</span><time>Started {fmt(e.startedAt)}{e.finishedAt?` · Finished ${fmt(e.finishedAt)}`:""}</time></div><div><State state={e.success?"SUCCESS":e.finishedAt?"FAILED":"WORKING"}/></div>{e.error&&<p className="run-error">{e.error}</p>}</div>;
      }
-     const r=row.run!;
-     return <div className="run-row" key={r.runId}><div><strong>{r.agent} · {eventLabel(r.taskType)}</strong><span>{r.provider} / {r.model}</span><time>Started {fmt(r.startedAt)}{r.finishedAt?` · Finished ${fmt(r.finishedAt)}`:""}</time></div><div><State state={r.success?"SUCCESS":r.finishedAt?"FAILED":"WORKING"}/><small>{r.escalationOccurred?"Escalated":"Direct"} · {r.tokenUsage??"—"} tokens</small></div>{r.error&&<p className="run-error">{r.error}</p>}</div>;
+     if("run" in row && row.run){
+      const r=row.run;
+      return <div className="run-row" key={r.runId}><div><strong>{r.agent} · {eventLabel(r.taskType)}</strong><span>{r.provider} / {r.model}</span><time>Started {fmt(r.startedAt)}{r.finishedAt?` · Finished ${fmt(r.finishedAt)}`:""}</time></div><div><State state={r.success?"SUCCESS":r.finishedAt?"FAILED":"WORKING"}/><small>{r.escalationOccurred?"Escalated":"Direct"} · {r.tokenUsage??"—"} tokens</small></div>{r.error&&<p className="run-error">{r.error}</p>}</div>;
+     }
+     return null;
     })}
    </Feed>
   </article>
