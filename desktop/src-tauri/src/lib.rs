@@ -13,6 +13,7 @@ mod providers;
 mod router;
 mod runner;
 mod schema_fixture;
+mod task_store;
 
 #[cfg(feature = "desktop")]
 use db::Database;
@@ -22,6 +23,8 @@ use definitions::{repository_root, DefinitionStore};
 use models::*;
 #[cfg(feature = "desktop")]
 use orchestrator::RuntimeService;
+#[cfg(feature = "desktop")]
+use task_store::{CommandTask, CreateCommandTaskRequest, TaskEvent, TaskStore};
 
 #[cfg(feature = "desktop")]
 use tauri::{Manager, State};
@@ -109,21 +112,68 @@ fn company_control(request: ControlRequest, service: State<'_, RuntimeService>) 
 }
 
 #[cfg(feature = "desktop")]
+#[tauri::command]
+fn get_command_tasks(store: State<'_, TaskStore>) -> Result<Vec<CommandTask>, String> {
+    store.list()
+}
+
+#[cfg(feature = "desktop")]
+#[tauri::command]
+fn get_command_task_events(task_id: Option<String>, store: State<'_, TaskStore>) -> Result<Vec<TaskEvent>, String> {
+    store.events(task_id.as_deref())
+}
+
+#[cfg(feature = "desktop")]
+#[tauri::command]
+fn create_command_task(request: CreateCommandTaskRequest, store: State<'_, TaskStore>) -> Result<CommandTask, String> {
+    store.create(&request)
+}
+
+#[cfg(feature = "desktop")]
+#[tauri::command]
+fn prepare_command_task(task_id: String, store: State<'_, TaskStore>) -> Result<CommandTask, String> {
+    store.prepare(&task_id, "sam")
+}
+
+#[cfg(feature = "desktop")]
+#[tauri::command]
+fn start_command_task(task_id: String, store: State<'_, TaskStore>) -> Result<CommandTask, String> {
+    store.start(&task_id, "sam")
+}
+
+#[cfg(feature = "desktop")]
+#[tauri::command]
+fn review_command_task(task_id: String, store: State<'_, TaskStore>) -> Result<CommandTask, String> {
+    store.send_to_review(&task_id, "sam")
+}
+
+#[cfg(feature = "desktop")]
+#[tauri::command]
+fn complete_command_task(task_id: String, store: State<'_, TaskStore>) -> Result<CommandTask, String> {
+    store.complete(&task_id, "sam")
+}
+
+#[cfg(feature = "desktop")]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             let root = repository_root().map_err(|e| Box::<dyn std::error::Error>::from(e))?;
             let definitions = DefinitionStore::load(&root).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
             let data_dir = app.path().app_data_dir()?;
-            let database = Database::new(data_dir.join("sam-neural-core.sqlite3")).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
+            let database_path = data_dir.join("sam-neural-core.sqlite3");
+            let database = Database::new(&database_path).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
+            let task_store = TaskStore::new(&database_path).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
             let service = RuntimeService::new(database, definitions).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
             app.manage(service);
+            app.manage(task_store);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             get_dashboard, get_team, get_work_items, get_work_item, get_approvals,
             get_activity, get_settings, save_settings, check_providers,
-            start_work_item, run_work_item, decide_approval, company_control
+            start_work_item, run_work_item, decide_approval, company_control,
+            get_command_tasks, get_command_task_events, create_command_task,
+            prepare_command_task, start_command_task, review_command_task, complete_command_task
         ])
         .run(tauri::generate_context!())
         .expect("error while running SAM Neural Core");
