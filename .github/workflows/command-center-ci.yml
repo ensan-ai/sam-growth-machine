@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feature/task-command-center-v1
+      - feature/rubric-neural-command-ui
   pull_request:
     branches:
       - slice/kernel-loop
+      - feature/task-command-center-v1
 
 jobs:
   frontend:
