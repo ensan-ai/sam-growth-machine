@@ -119,11 +119,25 @@ async fn nova_research_creator(
 }
 
 #[cfg(feature = "desktop")]
+fn load_local_env(path: &std::path::Path) {
+    let Ok(text) = std::fs::read_to_string(path) else { return; };
+    for raw in text.lines() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') { continue; }
+        let Some((key, value)) = line.split_once('=') else { continue; };
+        let key = key.trim();
+        if key.is_empty() || std::env::var_os(key).is_some() { continue; }
+        let value = value.trim().trim_matches('"').trim_matches('\'');
+        std::env::set_var(key, value);
+    }
+}
+
+#[cfg(feature = "desktop")]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             let root = repository_root().map_err(|e| Box::<dyn std::error::Error>::from(e))?;
-            let _ = dotenvy::from_path(root.join(".env"));
+            load_local_env(&root.join(".env"));
             let definitions = DefinitionStore::load(&root).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
             let data_dir = app.path().app_data_dir()?;
             let database = Database::new(data_dir.join("sam-neural-core.sqlite3")).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
