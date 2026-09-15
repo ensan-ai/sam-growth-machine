@@ -3,7 +3,7 @@ use chrono::Utc;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
-use std::{collections::{HashMap, HashSet}, env, time::Duration};
+use std::{collections::HashMap, env, time::Duration};
 
 const NOTION_VERSION: &str = "2026-03-11";
 const DEFAULT_ACTOR: &str = "apify/instagram-reel-scraper";
@@ -85,6 +85,7 @@ impl NovaConfig {
 #[derive(Debug, Clone)]
 struct ExistingReel {
     page_id: String,
+    has_script: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -139,14 +140,17 @@ pub async fn research_creator(db: &Database, request: NovaResearchRequest) -> Re
                 "status": report.status,
                 "new_videos_added": report.new_videos_added,
                 "total_scripts_stored": report.total_scripts_stored,
-                "relevant_videos": report.relevant_videos,
-                "destination": "saly"
+                "relevant_videos": &report.relevant_videos,
+                "sender": "nova",
+                "receiver": "saly"
             }))?;
             db.event(None, "nova.sam.notified", "nova", json!({
                 "creator": report.creator,
                 "status": report.status,
                 "new_videos_added": report.new_videos_added,
-                "notion": report.notion
+                "notion": &report.notion,
+                "sender": "nova",
+                "receiver": "sam"
             }))?;
         }
         Err(error) => {
@@ -167,35 +171,66 @@ async fn research_creator_inner(
     let notion = NotionClient::new(client.clone(), config.notion_token.clone());
     let existing = notion.known_reels(&config.scripts_data_source_id, username).await?;
     let existing_count = existing.len();
+    let existing_scripts = existing.values().filter(|record| record.has_script).count();
     let creator_memory = notion.find_creator(&config.creator_memory_data_source_id, username).await?;
 
-    let raw_items = fetch_apify_reels(client, config, username, max_reels).await?;
-    let mut records = Vec::new();
-    for item in raw_items.iter().take(max_reels) {
-        if let Some(record) = normalize_reel(item, username) {
-            records.push(record);
+    // First ever scan: let the profile scrape return transcripts once.
+    // Update scan: fetch IDs/metrics without transcript charges, then request transcripts only for new/missing-script Reel URLs.
+    let first_scan = existing.is_empty();
+    let raw_items = fetch_apify_profile(client, config, username, max_reels, first_scan).await?;
+    let mut records = raw_items.iter().take(max_reels).filter_map(|item| normalize_reel(item, username)).collect::<Vec<_>>();
+
+    if !first_scan {
+        let transcript_urls = records.iter()
+            .filter(|record| match existing.get(&record.video_id) {
+                None => true,
+                Some(known) => !known.has_script,
+            })
+            .map(|record| record.reel_url.clone())
+            .collect::<Vec<_>>();
+        if !transcript_urls.is_empty() {
+            let transcript_items = fetch_apify_direct_reels(client, config, &transcript_urls).await?;
+            let transcript_by_id = transcript_items.iter()
+                .filter_map(|item| normalize_reel(item, username))
+                .map(|record| (record.video_id, record.transcript))
+                .collect::<HashMap<_, _>>();
+            for record in &mut records {
+                if let Some(transcript) = transcript_by_id.get(&record.video_id) {
+                    record.transcript = transcript.clone();
+                }
+            }
         }
     }
 
     let mut new_videos_added = 0usize;
+    let mut new_scripts_added = 0usize;
     let mut known_skipped = 0usize;
     let mut metrics_refreshed = 0usize;
     let mut transcription_failures = 0usize;
+    let mut repaired_scripts = 0usize;
     let mut relevant = Vec::new();
     let now = Utc::now().to_rfc3339();
 
     for record in &records {
         if let Some(known) = existing.get(&record.video_id) {
-            known_skipped += 1;
-            if refresh_metrics {
-                notion.refresh_reel_metrics(&known.page_id, record, &now).await?;
-                metrics_refreshed += 1;
+            if !known.has_script && !record.transcript.trim().is_empty() {
+                let analysis = analyze_reel(record);
+                notion.repair_known_reel(&known.page_id, record, &analysis, &now, refresh_metrics).await?;
+                repaired_scripts += 1;
+            } else {
+                known_skipped += 1;
+                if refresh_metrics {
+                    notion.refresh_reel_metrics(&known.page_id, record, &now).await?;
+                    metrics_refreshed += 1;
+                }
             }
             continue;
         }
 
         if record.transcript.trim().is_empty() {
             transcription_failures += 1;
+        } else {
+            new_scripts_added += 1;
         }
         let analysis = analyze_reel(record);
         notion.create_reel(&config.scripts_data_source_id, record, &analysis, &now).await?;
@@ -211,9 +246,9 @@ async fn research_creator_inner(
 
     if relevant.is_empty() {
         let mut candidates = records.iter()
-            .filter(|r| !existing.contains_key(&r.video_id))
+            .filter(|record| !existing.contains_key(&record.video_id))
             .collect::<Vec<_>>();
-        candidates.sort_by_key(|r| std::cmp::Reverse(r.views.unwrap_or(0)));
+        candidates.sort_by_key(|record| std::cmp::Reverse(record.views.unwrap_or(0)));
         relevant.extend(candidates.into_iter().take(3).map(|record| NovaRelevantVideo {
             video_id: record.video_id.clone(),
             reel_url: record.reel_url.clone(),
@@ -222,10 +257,11 @@ async fn research_creator_inner(
     }
     relevant.truncate(5);
 
-    let total_scripts_stored = existing_count + new_videos_added;
+    let total_videos_stored = existing_count + new_videos_added;
+    let total_scripts_stored = existing_scripts + new_scripts_added + repaired_scripts;
     let profile_url = format!("https://www.instagram.com/{username}/");
-    let account_id = records.iter().find(|r| !r.account_id.is_empty()).map(|r| r.account_id.as_str()).unwrap_or("");
-    let creator_name = records.iter().find(|r| !r.creator_name.is_empty()).map(|r| r.creator_name.as_str()).unwrap_or(username);
+    let account_id = records.iter().find(|record| !record.account_id.is_empty()).map(|record| record.account_id.as_str()).unwrap_or("");
+    let creator_name = records.iter().find(|record| !record.creator_name.is_empty()).map(|record| record.creator_name.as_str()).unwrap_or(username);
     let creator_page = notion.upsert_creator(
         &config.creator_memory_data_source_id,
         creator_memory.as_ref(),
@@ -233,7 +269,7 @@ async fn research_creator_inner(
         username,
         account_id,
         &profile_url,
-        records.len().max(existing_count),
+        total_videos_stored,
         total_scripts_stored,
         &now,
     ).await?;
@@ -245,8 +281,15 @@ async fn research_creator_inner(
         existing_count,
         new_videos_added,
         total_scripts_stored,
+        repaired_scripts,
         &now,
     ).await?;
+
+    let creator_memory_url = if creator_page.page_url.is_empty() {
+        notion_page_url(&config.creator_memory_database_page_id)
+    } else {
+        creator_page.page_url
+    };
 
     Ok(NovaResearchReport {
         artifact_type: "CREATOR_RESEARCH_REPORT".into(),
@@ -257,31 +300,39 @@ async fn research_creator_inner(
         total_scripts_stored,
         relevant_videos: relevant,
         notion: NovaNotionLinks {
-            creator_memory_url: creator_page.page_url,
+            creator_memory_url,
             scripts_database_url: notion_page_url(&config.scripts_database_page_id),
             cv_portfolio_url: notion_page_url(&config.cv_database_page_id),
         },
         known_video_ids_skipped: known_skipped,
         metrics_refreshed,
         transcription_failures,
-        notes: Some("NOVA checked persistent Notion memory first and fully processed only previously unseen Instagram Video IDs.".into()),
+        notes: Some(format!("Memory-first run. Full transcript work was limited to new Reels or known Reels missing a script. Repaired missing scripts: {repaired_scripts}.")),
     })
 }
 
-async fn fetch_apify_reels(client: &Client, config: &NovaConfig, username: &str, max_reels: usize) -> Result<Vec<Value>, String> {
+async fn fetch_apify_profile(client: &Client, config: &NovaConfig, username: &str, max_reels: usize, include_transcript: bool) -> Result<Vec<Value>, String> {
+    run_apify_actor(client, config, vec![username.to_string()], Some(max_reels), include_transcript).await
+}
+
+async fn fetch_apify_direct_reels(client: &Client, config: &NovaConfig, reel_urls: &[String]) -> Result<Vec<Value>, String> {
+    run_apify_actor(client, config, reel_urls.to_vec(), None, true).await
+}
+
+async fn run_apify_actor(client: &Client, config: &NovaConfig, inputs: Vec<String>, results_limit: Option<usize>, include_transcript: bool) -> Result<Vec<Value>, String> {
     let actor = config.apify_actor.replace('/', "~");
     let url = format!("https://api.apify.com/v2/acts/{actor}/run-sync-get-dataset-items?clean=true&format=json");
+    let mut input = Map::new();
+    input.insert("username".into(), json!(inputs));
+    if let Some(limit) = results_limit { input.insert("resultsLimit".into(), json!(limit)); }
+    input.insert("includeTranscript".into(), json!(include_transcript));
+    input.insert("includeDownloadedVideo".into(), json!(false));
+    input.insert("includeSharesCount".into(), json!(false));
+    input.insert("skipPinnedPosts".into(), json!(false));
+    input.insert("skipTrialReels".into(), json!(false));
     let response = client.post(url)
         .bearer_auth(&config.apify_token)
-        .json(&json!({
-            "username": [username],
-            "resultsLimit": max_reels,
-            "includeTranscript": true,
-            "includeDownloadedVideo": false,
-            "includeSharesCount": false,
-            "skipPinnedPosts": false,
-            "skipTrialReels": false
-        }))
+        .json(&Value::Object(input))
         .send().await.map_err(|e| format!("Apify request failed: {e}"))?;
     if !response.status().is_success() {
         let status = response.status();
@@ -315,11 +366,11 @@ fn normalize_reel(item: &Value, requested_username: &str) -> Option<ReelRecord> 
 }
 
 fn transcript_value(item: &Value) -> String {
-    if let Some(text) = string_value(item, &["transcript", "videoTranscript", "text"]) { return text; }
+    if let Some(text) = string_value(item, &["transcript", "videoTranscript"]) { return text; }
     if let Some(value) = item.get("transcript") {
         if let Some(text) = value.get("text").and_then(Value::as_str) { return text.to_string(); }
         if let Some(segments) = value.get("segments").and_then(Value::as_array) {
-            return segments.iter().filter_map(|s| s.get("text").and_then(Value::as_str)).collect::<Vec<_>>().join(" ");
+            return segments.iter().filter_map(|segment| segment.get("text").and_then(Value::as_str)).collect::<Vec<_>>().join(" ");
         }
     }
     String::new()
@@ -328,18 +379,18 @@ fn transcript_value(item: &Value) -> String {
 fn analyze_reel(record: &ReelRecord) -> SimpleAnalysis {
     let source = if record.transcript.trim().is_empty() { record.caption.trim() } else { record.transcript.trim() };
     let hook = first_phrase(source, 220);
-    let combined = format!("{} {}", record.caption, record.transcript).to_lowercase();
+    let combined = format!(" {} {} ", record.caption, record.transcript).to_lowercase();
     let style = if contains_any(&combined, &["look", "see this", "watch this", "شوف", "بص", "شايف"]) {
         "Demo"
-    } else if contains_any(&combined, &["how to", "how i", "step by step", "ازاي", "إزاي", "طريقة"]){
+    } else if contains_any(&combined, &["how to", "how i", "step by step", "ازاي", "إزاي", "طريقة"]) {
         "Tutorial"
-    } else if contains_any(&combined, &["i tried", "i tested", "جربت", "اختبرت"]){
+    } else if contains_any(&combined, &["i tried", "i tested", "جربت", "اختبرت"]) {
         "Experiment"
-    } else if contains_any(&combined, &[" vs ", "versus", "compare", "comparison", "مقارنة", "أحسن من"]){
+    } else if contains_any(&combined, &[" vs ", "versus", "compare", "comparison", "مقارنة", "أحسن من"]) {
         "Comparison"
-    } else if contains_any(&combined, &["i think", "my take", "in my opinion", "رأيي", "شايف إن"]){
+    } else if contains_any(&combined, &["i think", "my take", "in my opinion", "رأيي", "شايف إن"]) {
         "Opinion"
-    } else if contains_any(&combined, &["built", "building", "بنيت", "ببني", "عملت سيستم"]){
+    } else if contains_any(&combined, &["built", "building", "بنيت", "ببني", "عملت سيستم"]) {
         "Build"
     } else {
         "Other"
@@ -350,10 +401,7 @@ fn analyze_reel(record: &ReelRecord) -> SimpleAnalysis {
         " ai ", "artificial intelligence", "chatgpt", "claude", "gemini", "grok", "agent", "automation",
         "ذكاء اصطناعي", "الذكاء الاصطناعي", "أتمتة", "اوتوميشن", "أوتوميشن"
     ]);
-    let performance = match record.views {
-        Some(v) => format!("Public view count observed at capture time: {v}. "),
-        None => String::new(),
-    };
+    let performance = record.views.map(|views| format!("Public view count observed at capture time: {views}. ")).unwrap_or_default();
     SimpleAnalysis {
         topic,
         hook,
@@ -371,7 +419,7 @@ fn topic_from(record: &ReelRecord) -> String {
 }
 
 fn relevant_reason(record: &ReelRecord, analysis: &SimpleAnalysis) -> String {
-    let metric = record.views.map(|v| format!("; observed views: {v}")).unwrap_or_default();
+    let metric = record.views.map(|views| format!("; observed views: {views}")).unwrap_or_default();
     format!("SAM-relevant AI/automation signal using {} delivery{}; source Reel and full transcript are stored for inspection.", analysis.content_style, metric)
 }
 
@@ -423,7 +471,10 @@ impl NotionClient {
         for row in rows {
             let page_id = row.get("id").and_then(Value::as_str).unwrap_or_default().to_string();
             if let Some(video_id) = notion_text_property(&row, "Video ID") {
-                if !video_id.is_empty() { result.insert(video_id, ExistingReel { page_id: page_id.clone() }); }
+                if !video_id.is_empty() {
+                    let has_script = notion_text_property(&row, "Full Script").map(|text| !text.trim().is_empty()).unwrap_or(false);
+                    result.insert(video_id, ExistingReel { page_id: page_id.clone(), has_script });
+                }
             }
         }
         Ok(result)
@@ -462,9 +513,9 @@ impl NotionClient {
         properties.insert("Date Added".into(), date_property(Some(now)));
         properties.insert("Last Updated".into(), date_property(Some(now)));
         properties.insert("Publish Date".into(), date_property(record.publish_date.as_deref()));
-        properties.insert("Views".into(), number_property(record.views.map(|v| v as f64)));
-        properties.insert("Likes".into(), number_property(record.likes.map(|v| v as f64)));
-        properties.insert("Comments".into(), number_property(record.comments.map(|v| v as f64)));
+        properties.insert("Views".into(), number_property(record.views.map(|views| views as f64)));
+        properties.insert("Likes".into(), number_property(record.likes.map(|likes| likes as f64)));
+        properties.insert("Comments".into(), number_property(record.comments.map(|comments| comments as f64)));
         properties.insert("Duration Sec".into(), number_property(record.duration_sec));
 
         let response = self.request(reqwest::Method::POST, "https://api.notion.com/v1/pages")
@@ -476,13 +527,36 @@ impl NotionClient {
 
     async fn refresh_reel_metrics(&self, page_id: &str, record: &ReelRecord, now: &str) -> Result<(), String> {
         let mut properties = Map::new();
-        properties.insert("Views".into(), number_property(record.views.map(|v| v as f64)));
-        properties.insert("Likes".into(), number_property(record.likes.map(|v| v as f64)));
-        properties.insert("Comments".into(), number_property(record.comments.map(|v| v as f64)));
+        if let Some(views) = record.views { properties.insert("Views".into(), number_property(Some(views as f64))); }
+        if let Some(likes) = record.likes { properties.insert("Likes".into(), number_property(Some(likes as f64))); }
+        if let Some(comments) = record.comments { properties.insert("Comments".into(), number_property(Some(comments as f64))); }
         properties.insert("Last Updated".into(), date_property(Some(now)));
+        self.update_page(page_id, properties, "Notion metric refresh failed").await
+    }
+
+    async fn repair_known_reel(&self, page_id: &str, record: &ReelRecord, analysis: &SimpleAnalysis, now: &str, refresh_metrics: bool) -> Result<(), String> {
+        let mut properties = Map::new();
+        properties.insert("Full Script".into(), rich_text_property(&record.transcript));
+        properties.insert("Hook".into(), rich_text_property(&analysis.hook));
+        properties.insert("CTA".into(), rich_text_property(&analysis.cta));
+        properties.insert("Topic".into(), rich_text_property(&analysis.topic));
+        properties.insert("Why It Worked".into(), rich_text_property(&analysis.why_it_worked));
+        properties.insert("SAM Notes".into(), rich_text_property(&analysis.sam_notes));
+        properties.insert("Content Style".into(), json!({"select":{"name":analysis.content_style}}));
+        properties.insert("Status".into(), json!({"select":{"name":if analysis.sam_relevant {"Relevant for SAM"} else {"Analyzed"}}}));
+        properties.insert("Last Updated".into(), date_property(Some(now)));
+        if refresh_metrics {
+            if let Some(views) = record.views { properties.insert("Views".into(), number_property(Some(views as f64))); }
+            if let Some(likes) = record.likes { properties.insert("Likes".into(), number_property(Some(likes as f64))); }
+            if let Some(comments) = record.comments { properties.insert("Comments".into(), number_property(Some(comments as f64))); }
+        }
+        self.update_page(page_id, properties, "Notion script repair failed").await
+    }
+
+    async fn update_page(&self, page_id: &str, properties: Map<String, Value>, context: &str) -> Result<(), String> {
         let response = self.request(reqwest::Method::PATCH, &format!("https://api.notion.com/v1/pages/{page_id}"))
             .json(&json!({"properties": Value::Object(properties)})).send().await
-            .map_err(|e| format!("Notion metric refresh failed: {e}"))?;
+            .map_err(|error| format!("{context}: {error}"))?;
         notion_json(response).await?;
         Ok(())
     }
@@ -502,14 +576,14 @@ impl NotionClient {
         let mut properties = Map::new();
         properties.insert("Creator".into(), title_property(creator_name));
         properties.insert("Instagram Username".into(), rich_text_property(username));
-        properties.insert("Instagram Account ID".into(), rich_text_property(account_id));
+        if !account_id.is_empty() { properties.insert("Instagram Account ID".into(), rich_text_property(account_id)); }
         properties.insert("Profile URL".into(), json!({"url": profile_url}));
         properties.insert("Videos Stored".into(), number_property(Some(videos_stored as f64)));
         properties.insert("Scripts Stored".into(), number_property(Some(scripts_stored as f64)));
         properties.insert("Last Checked".into(), date_property(Some(now)));
         properties.insert("Last Updated".into(), date_property(Some(now)));
         properties.insert("Status".into(), json!({"select": {"name":"Active"}}));
-        if existing.and_then(|e| e.first_seen.as_ref()).is_none() {
+        if existing.and_then(|record| record.first_seen.as_ref()).is_none() {
             properties.insert("First Seen".into(), date_property(Some(now)));
         }
         let (method, url, body) = if let Some(current) = existing {
@@ -517,17 +591,17 @@ impl NotionClient {
         } else {
             (reqwest::Method::POST, "https://api.notion.com/v1/pages".into(), json!({"parent":{"type":"data_source_id","data_source_id":data_source_id},"properties":Value::Object(properties)}))
         };
-        let response = self.request(method, &url).json(&body).send().await.map_err(|e| format!("Notion creator upsert failed: {e}"))?;
+        let response = self.request(method, &url).json(&body).send().await.map_err(|error| format!("Notion creator upsert failed: {error}"))?;
         let value = notion_json(response).await?;
         Ok(CreatorMemory {
-            page_id: value.get("id").and_then(Value::as_str).unwrap_or_else(|| existing.map(|e| e.page_id.as_str()).unwrap_or("")).to_string(),
-            page_url: value.get("url").and_then(Value::as_str).unwrap_or_else(|| existing.map(|e| e.page_url.as_str()).unwrap_or("")).to_string(),
-            first_seen: existing.and_then(|e| e.first_seen.clone()).or_else(|| Some(now.to_string())),
+            page_id: value.get("id").and_then(Value::as_str).unwrap_or_else(|| existing.map(|record| record.page_id.as_str()).unwrap_or("")).to_string(),
+            page_url: value.get("url").and_then(Value::as_str).unwrap_or_else(|| existing.map(|record| record.page_url.as_str()).unwrap_or("")).to_string(),
+            first_seen: existing.and_then(|record| record.first_seen.clone()).or_else(|| Some(now.to_string())),
         })
     }
 
-    async fn create_research_run(&self, data_source_id: &str, username: &str, profile_url: &str, existing: usize, added: usize, total: usize, now: &str) -> Result<(), String> {
-        let evidence = format!("Creator update completed. Existing videos before run: {existing}. New videos added: {added}. Total scripts stored after run: {total}.");
+    async fn create_research_run(&self, data_source_id: &str, username: &str, profile_url: &str, existing: usize, added: usize, total_scripts: usize, repaired_scripts: usize, now: &str) -> Result<(), String> {
+        let evidence = format!("Creator update completed. Existing videos before run: {existing}. New videos added: {added}. Total scripts stored after run: {total_scripts}. Missing scripts repaired: {repaired_scripts}.");
         let response = self.request(reqwest::Method::POST, "https://api.notion.com/v1/pages")
             .json(&json!({
                 "parent":{"type":"data_source_id","data_source_id":data_source_id},
@@ -543,7 +617,7 @@ impl NotionClient {
                     "Permanent Learning":{"checkbox":false},
                     "Approved By":{"select":{"name":"Evidence"}}
                 }
-            })).send().await.map_err(|e| format!("Notion CV update failed: {e}"))?;
+            })).send().await.map_err(|error| format!("Notion CV update failed: {error}"))?;
         notion_json(response).await?;
         Ok(())
     }
@@ -562,13 +636,13 @@ async fn notion_json(response: reqwest::Response) -> Result<Value, String> {
         let detail = response.text().await.unwrap_or_default();
         return Err(format!("Notion returned {status}: {}", detail.chars().take(400).collect::<String>()));
     }
-    response.json::<Value>().await.map_err(|e| format!("Invalid Notion response: {e}"))
+    response.json::<Value>().await.map_err(|error| format!("Invalid Notion response: {error}"))
 }
 
 fn required_env(key: &str) -> Result<String, String> {
-    env::var(key).ok().filter(|v| !v.trim().is_empty()).ok_or_else(|| format!("{key} is not configured for the local NOVA runtime"))
+    env::var(key).ok().filter(|value| !value.trim().is_empty()).ok_or_else(|| format!("{key} is not configured for the local NOVA runtime"))
 }
-fn env_or_default(key: &str, default: &str) -> String { env::var(key).ok().filter(|v| !v.trim().is_empty()).unwrap_or_else(|| default.into()) }
+fn env_or_default(key: &str, default: &str) -> String { env::var(key).ok().filter(|value| !value.trim().is_empty()).unwrap_or_else(|| default.into()) }
 fn default_true() -> bool { true }
 fn normalize_username(value: &str) -> Result<String, String> {
     let trimmed = value.trim().trim_start_matches('@').trim_matches('/');
@@ -581,17 +655,17 @@ fn notion_page_url(id: &str) -> String { format!("https://www.notion.so/{}", id.
 fn safe_error(error: &str) -> String {
     if error.contains("APIFY_TOKEN") || error.contains("NOTION_TOKEN") { "NOVA runtime credential is missing or invalid".into() } else { error.chars().take(500).collect() }
 }
-fn string_value(value: &Value, keys: &[&str]) -> Option<String> { keys.iter().find_map(|k| value.get(*k).and_then(Value::as_str).map(str::to_string)).filter(|s| !s.trim().is_empty()) }
-fn int_value(value: &Value, keys: &[&str]) -> Option<i64> { keys.iter().find_map(|k| value.get(*k).and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|x| x as i64)))) }
-fn float_value(value: &Value, keys: &[&str]) -> Option<f64> { keys.iter().find_map(|k| value.get(*k).and_then(|v| v.as_f64().or_else(|| v.as_i64().map(|x| x as f64)))) }
+fn string_value(value: &Value, keys: &[&str]) -> Option<String> { keys.iter().find_map(|key| value.get(*key).and_then(Value::as_str).map(str::to_string)).filter(|text| !text.trim().is_empty()) }
+fn int_value(value: &Value, keys: &[&str]) -> Option<i64> { keys.iter().find_map(|key| value.get(*key).and_then(|item| item.as_i64().or_else(|| item.as_f64().map(|number| number as i64)))) }
+fn float_value(value: &Value, keys: &[&str]) -> Option<f64> { keys.iter().find_map(|key| value.get(*key).and_then(|item| item.as_f64().or_else(|| item.as_i64().map(|number| number as f64)))) }
 fn contains_any(text: &str, terms: &[&str]) -> bool { terms.iter().any(|term| text.contains(term)) }
-fn first_phrase(value: &str, max_chars: usize) -> String {
+fn first_phrase(value: &str, max_bytes: usize) -> String {
     let cleaned = value.split_whitespace().collect::<Vec<_>>().join(" ");
     if cleaned.is_empty() { return String::new(); }
     let mut end = cleaned.len();
-    for (idx, ch) in cleaned.char_indices() {
-        if idx > max_chars { end = idx; break; }
-        if matches!(ch, '.' | '!' | '?' | '؟' | '\n') && idx > 12 { end = idx + ch.len_utf8(); break; }
+    for (index, character) in cleaned.char_indices() {
+        if index > max_bytes { end = index; break; }
+        if matches!(character, '.' | '!' | '?' | '؟' | '\n') && index > 12 { end = index + character.len_utf8(); break; }
     }
     cleaned[..end.min(cleaned.len())].to_string()
 }
@@ -601,17 +675,17 @@ fn rich_text_property(value: &str) -> Value {
 }
 fn title_property(value: &str) -> Value { json!({"title":[{"type":"text","text":{"content": first_phrase(value, 1800)}}]}) }
 fn number_property(value: Option<f64>) -> Value { json!({"number": value}) }
-fn date_property(value: Option<&str>) -> Value { match value { Some(v) if !v.is_empty() => json!({"date":{"start":v}}), _ => json!({"date":Value::Null}) } }
+fn date_property(value: Option<&str>) -> Value { match value { Some(date) if !date.is_empty() => json!({"date":{"start":date}}), _ => json!({"date":Value::Null}) } }
 fn chunk_text(value: &str, max_chars: usize) -> Vec<String> {
     if value.is_empty() { return Vec::new(); }
     let chars = value.chars().collect::<Vec<_>>();
     chars.chunks(max_chars).map(|chunk| chunk.iter().collect()).collect()
 }
 fn notion_text_property(page: &Value, name: &str) -> Option<String> {
-    let prop = page.get("properties")?.get(name)?;
+    let property = page.get("properties")?.get(name)?;
     for key in ["rich_text", "title"] {
-        if let Some(items) = prop.get(key).and_then(Value::as_array) {
-            let text = items.iter().filter_map(|v| v.get("plain_text").and_then(Value::as_str)).collect::<Vec<_>>().join("");
+        if let Some(items) = property.get(key).and_then(Value::as_array) {
+            let text = items.iter().filter_map(|item| item.get("plain_text").and_then(Value::as_str)).collect::<Vec<_>>().join("");
             if !text.is_empty() { return Some(text); }
         }
     }
@@ -622,6 +696,7 @@ fn notion_date_property(page: &Value, name: &str) -> Option<String> { page.get("
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     #[test]
     fn username_normalizes_handle_and_url() {
