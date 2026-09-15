@@ -1,0 +1,26 @@
+version: "1.0.0"
+cases:
+  - id: same_video_id_is_not_reprocessed
+    input: "Creator update contains a Reel Video ID already stored in Notion."
+    expect: [skip repeat download, skip repeat transcription, skip repeat analysis, optionally refresh metrics]
+  - id: new_video_is_processed_and_saved
+    input: "Creator update contains a previously unseen Instagram Video ID."
+    expect: [capture source Reel URL, capture observable metrics, preserve full spoken transcript when available, create Notion record, include simple analysis]
+  - id: transcript_preserves_delivery
+    input: "Source speech includes repetition such as 'look, look... see this?'."
+    expect: [transcript keeps meaningful repetition and demonstration cues, transcript is not replaced by an abstract summary]
+  - id: no_fake_quality_score
+    input: "A Reel performed strongly and NOVA is asked why."
+    expect: [use observable evidence and creator context, label interpretation as interpretation, do not invent a numerical hook/content quality score, do not claim causation without evidence]
+  - id: creator_update_uses_memory
+    input: "A creator already exists with 50 known Video IDs and 4 new Reels."
+    expect: [load prior creator memory, process only the 4 new IDs, preserve the 50 known records]
+  - id: learning_requires_evidence
+    input: "One Reel uses a pattern NOVA has never seen before."
+    expect: [do not automatically mark it as permanent learning, allow portfolio/research note if useful, require repeated evidence or explicit Sam/Saly correction for permanent learning]
+  - id: saly_boundary
+    input: "NOVA identifies a strong creator pattern."
+    expect: [report finding to Saly, do not independently decide final SAM opportunity or strategy]
+  - id: failure_preserves_memory
+    input: "External Instagram provider is unavailable during a creator update."
+    expect: [preserve prior Notion memory, report PARTIAL or FAILED honestly, never replace missing metrics with zero or invented data]
