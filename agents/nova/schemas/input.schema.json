@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sam://agents/nova/input.schema.json",
+  "title": "NOVA Input",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "platform", "instagram_username"],
+      "properties": {
+        "type": {"const": "CREATOR_RESEARCH_REQUEST"},
+        "platform": {"const": "INSTAGRAM"},
+        "instagram_username": {"type": "string", "minLength": 1},
+        "profile_url": {"type": ["string", "null"], "format": "uri"},
+        "requested_by": {"type": "string", "enum": ["sam", "saly"]},
+        "max_reels": {"type": ["integer", "null"], "minimum": 1},
+        "notes": {"type": ["string", "null"]}
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "platform", "instagram_username"],
+      "properties": {
+        "type": {"const": "CREATOR_UPDATE_REQUEST"},
+        "platform": {"const": "INSTAGRAM"},
+        "instagram_username": {"type": "string", "minLength": 1},
+        "requested_by": {"type": "string", "enum": ["sam", "saly"]},
+        "refresh_metrics": {"type": "boolean", "default": true},
+        "notes": {"type": ["string", "null"]}
+      }
+    }
+  ]
+}
