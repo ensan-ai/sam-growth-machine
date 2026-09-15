@@ -72,7 +72,7 @@ export function MissionHome({ dashboard, team, activity, handoffs, workItems, se
   );
 }
 
-export function EmployeeTeam({ team, activity }: { team: Employee[]; activity: Activity }) {
+export function EmployeeTeam({ team, activity, onNovaResearch }: { team: Employee[]; activity: Activity; onNovaResearch?: () => void }) {
   const events = newestFirst(activity.events, (e) => e.createdAt);
   const runs = newestFirst(activity.runs, (r) => r.startedAt);
   return (
@@ -101,6 +101,7 @@ export function EmployeeTeam({ team, activity }: { team: Employee[]; activity: A
                 <strong>{run ? eventLabel(run.taskType) : event ? eventLabel(event.eventType) : "Ready for an assignment"}</strong>
                 <small>{run ? `${run.provider} · ${run.model}` : event ? time(event.createdAt) : "No recorded activity"}</small>
               </div>
+              {e.employeeId === "nova" && onNovaResearch ? <button className="text-link" onClick={onNovaResearch}>Research Instagram creator →</button> : null}
             </article>
           );
         })}
