@@ -6,6 +6,7 @@ mod db;
 mod definitions;
 mod learning;
 mod models;
+mod nova;
 mod orchestrator;
 mod policy;
 mod producers;
@@ -109,10 +110,20 @@ fn company_control(request: ControlRequest, service: State<'_, RuntimeService>) 
 }
 
 #[cfg(feature = "desktop")]
+#[tauri::command]
+async fn nova_research_creator(
+    request: nova::NovaResearchRequest,
+    service: State<'_, RuntimeService>,
+) -> Result<nova::NovaResearchReport, String> {
+    nova::research_creator(&service.db, request).await
+}
+
+#[cfg(feature = "desktop")]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             let root = repository_root().map_err(|e| Box::<dyn std::error::Error>::from(e))?;
+            let _ = dotenvy::from_path(root.join(".env"));
             let definitions = DefinitionStore::load(&root).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
             let data_dir = app.path().app_data_dir()?;
             let database = Database::new(data_dir.join("sam-neural-core.sqlite3")).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
@@ -123,7 +134,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_dashboard, get_team, get_work_items, get_work_item, get_approvals,
             get_activity, get_settings, save_settings, check_providers,
-            start_work_item, run_work_item, decide_approval, company_control
+            start_work_item, run_work_item, decide_approval, company_control,
+            nova_research_creator
         ])
         .run(tauri::generate_context!())
         .expect("error while running SAM Neural Core");
