@@ -11,3 +11,11 @@ export type SystemEvent = { eventId:string; workItemId?:string; eventType:string
 export type WorkDetail = { workItem:WorkItem; artifacts:Artifact[]; handoffs:Handoff[]; approvals:Approval[]; runs:AgentRun[]; events:SystemEvent[]; executions?:Execution[] };
 export type Dashboard = { companyState:string; providerStatus:ProviderStatus; activeAgents:string[]; waitingApprovals:number; blockedWork:number; workItems:WorkItem[] };
 export type Activity = { runs:AgentRun[]; events:SystemEvent[]; executions?:Execution[] };
+export type NovaRelevantVideo = { videoId:string; reelUrl:string; reason:string };
+export type NovaResearchReport = {
+  type:string; creator:string; status:"COMPLETE"|"PARTIAL"|"FAILED";
+  existingVideos:number; newVideosAdded:number; totalScriptsStored:number;
+  relevantVideos:NovaRelevantVideo[];
+  notion:{ creatorMemoryUrl:string; scriptsDatabaseUrl:string; cvPortfolioUrl:string };
+  knownVideoIdsSkipped:number; metricsRefreshed:number; transcriptionFailures:number; notes?:string;
+};
