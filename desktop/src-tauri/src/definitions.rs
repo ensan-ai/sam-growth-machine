@@ -2,6 +2,8 @@ use crate::models::EmployeeSummary;
 use serde_json::Value;
 use std::{collections::HashMap, fs, path::{Path, PathBuf}};
 
+const EMPLOYEE_IDS: [&str; 8] = ["travis", "saly", "nova", "adam", "brain", "jax", "maro", "lara"];
+
 #[derive(Debug, Clone)]
 pub struct AgentDefinition {
     pub summary: EmployeeSummary,
@@ -20,7 +22,7 @@ impl DefinitionStore {
     pub fn load(root: impl AsRef<Path>) -> Result<Self, String> {
         let root = root.as_ref().to_path_buf();
         let mut agents = HashMap::new();
-        for id in ["travis", "saly", "adam", "brain", "jax", "maro", "lara"] {
+        for id in EMPLOYEE_IDS {
             let dir = root.join("agents").join(id);
             let manifest_text = fs::read_to_string(dir.join("manifest.yaml"))
                 .map_err(|e| format!("Cannot load {id} manifest: {e}"))?;
@@ -59,8 +61,7 @@ impl DefinitionStore {
     }
 
     pub fn employees(&self) -> Vec<EmployeeSummary> {
-        let order = ["travis", "saly", "adam", "brain", "jax", "maro", "lara"];
-        order.iter().filter_map(|id| self.agents.get(*id).map(|d| d.summary.clone())).collect()
+        EMPLOYEE_IDS.iter().filter_map(|id| self.agents.get(*id).map(|d| d.summary.clone())).collect()
     }
 
     pub fn schema_resources(&self) -> HashMap<String, Value> {
@@ -74,7 +75,6 @@ impl DefinitionStore {
         }
         resources
     }
-
 }
 
 fn read_json(path: PathBuf) -> Result<Value, String> {
@@ -98,8 +98,9 @@ mod tests {
     #[test]
     fn loads_all_authoritative_employees() {
         let store = DefinitionStore::load(repository_root().unwrap()).unwrap();
-        assert_eq!(store.employees().len(), 7);
+        assert_eq!(store.employees().len(), 8);
         assert_eq!(store.get("brain").unwrap().summary.reports_to, "adam");
         assert_eq!(store.get("saly").unwrap().summary.reports_to, "travis");
+        assert_eq!(store.get("nova").unwrap().summary.reports_to, "saly");
     }
 }
