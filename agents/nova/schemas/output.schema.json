@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sam://agents/nova/output.schema.json",
+  "title": "NOVA Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type","creator","status","existing_videos","new_videos_added","total_scripts_stored","relevant_videos","notion"],
+  "properties": {
+    "type": {"const": "CREATOR_RESEARCH_REPORT"},
+    "creator": {"type": "string"},
+    "status": {"type": "string", "enum": ["COMPLETE", "PARTIAL", "FAILED"]},
+    "existing_videos": {"type": "integer", "minimum": 0},
+    "new_videos_added": {"type": "integer", "minimum": 0},
+    "total_scripts_stored": {"type": "integer", "minimum": 0},
+    "relevant_videos": {"type":"array","items":{"type":"object","additionalProperties":false,"required":["video_id","reel_url","reason"],"properties":{"video_id":{"type":"string"},"reel_url":{"type":"string","format":"uri"},"reason":{"type":"string"}}}},
+    "notion": {"type":"object","additionalProperties":false,"required":["creator_memory_url","scripts_database_url","cv_portfolio_url"],"properties":{"creator_memory_url":{"type":"string","format":"uri"},"scripts_database_url":{"type":"string","format":"uri"},"cv_portfolio_url":{"type":"string","format":"uri"}}},
+    "known_video_ids_skipped": {"type":"integer","minimum":0},
+    "metrics_refreshed": {"type":"integer","minimum":0},
+    "transcription_failures": {"type":"integer","minimum":0},
+    "notes": {"type":["string","null"]}
+  }
+}
