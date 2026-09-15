@@ -1,8 +1,9 @@
-import type { Activity, Approval, Dashboard, Employee, ProviderStatus, Settings, WorkDetail, WorkItem } from "../types";
+import type { Activity, Approval, Dashboard, Employee, NovaResearchReport, ProviderStatus, Settings, WorkDetail, WorkItem } from "../types";
 
 const team: Employee[] = [
   { employeeId: "travis", name: "Travis", title: "Main Agent / Growth Director", reportsTo: "sam", version: "1.0.0", definitionStatus: "reviewable", runtimeStatus: "IDLE" },
   { employeeId: "saly", name: "Saly", title: "Research Director", reportsTo: "travis", version: "1.0.0", definitionStatus: "reviewable", runtimeStatus: "WORKING" },
+  { employeeId: "nova", name: "NOVA", title: "Instagram Content Researcher", reportsTo: "saly", version: "1.0.0", definitionStatus: "reviewable", runtimeStatus: "IDLE" },
   { employeeId: "adam", name: "Adam", title: "Strategy Director", reportsTo: "travis", version: "1.0.0", definitionStatus: "reviewable", runtimeStatus: "IDLE" },
   { employeeId: "brain", name: "Brain", title: "Public Writer", reportsTo: "adam", version: "1.0.0", definitionStatus: "reviewable", runtimeStatus: "IDLE" },
   { employeeId: "jax", name: "Jax", title: "Creative Director", reportsTo: "adam", version: "1.0.0", definitionStatus: "reviewable", runtimeStatus: "IDLE" },
@@ -60,6 +61,20 @@ export const previewRuntime = {
   decideApproval: async (id: string) => previewRuntime.workItem(id),
   control: async () => previewRuntime.settings(),
   saveSettings: async () => previewRuntime.settings(),
+  novaResearchCreator: async (instagramUsername: string, maxReels = 20): Promise<NovaResearchReport> => ({
+    type: "CREATOR_RESEARCH_REPORT",
+    creator: instagramUsername.startsWith("@") ? instagramUsername : `@${instagramUsername}`,
+    status: "COMPLETE",
+    existingVideos: 12,
+    newVideosAdded: Math.min(maxReels, 3),
+    totalScriptsStored: 15,
+    relevantVideos: [],
+    notion: { creatorMemoryUrl: "https://www.notion.so/", scriptsDatabaseUrl: "https://www.notion.so/", cvPortfolioUrl: "https://www.notion.so/" },
+    knownVideoIdsSkipped: 12,
+    metricsRefreshed: 12,
+    transcriptionFailures: 0,
+    notes: "Preview result — no external provider was called.",
+  }),
 };
 
 export function isTauriRuntime() {
